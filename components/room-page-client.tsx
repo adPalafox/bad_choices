@@ -1,14 +1,27 @@
 "use client";
 
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
+import {
+  ClockIcon,
+  CopyIcon,
+  DoorIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LinkIcon,
+  RotateIcon,
+  SparklesIcon,
+  UsersIcon
+} from "@/components/ui-icons";
 import { createSessionId, MIN_PLAYERS, REVEAL_DURATION_SECONDS, VOTE_DURATION_SECONDS } from "@/lib/game";
-import { readRoomSession, writeRoomSession } from "@/lib/room-session";
+import { readRoomSession, readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
-import type { ApiRoomState, Choice, RoomSession } from "@/lib/types";
+import type { ApiRoomState, Choice, ResolutionType, RoomSession, ScenarioPack } from "@/lib/types";
 
 type RoomPageClientProps = {
   code: string;
+  packs: ScenarioPack[];
 };
 
 type JoinState = {
@@ -17,7 +30,20 @@ type JoinState = {
   error: string | null;
 };
 
-export function RoomPageClient({ code }: RoomPageClientProps) {
+function getRevealKicker(resolutionType: ResolutionType) {
+  switch (resolutionType) {
+    case "indecision_tie":
+      return "The room split. Chaos picked anyway.";
+    case "indecision_no_vote":
+      return "Nobody moved. Chaos stepped in.";
+    case "majority":
+    default:
+      return "The room chose";
+  }
+}
+
+export function RoomPageClient({ code, packs }: RoomPageClientProps) {
+  const router = useRouter();
   const [state, setState] = useState<ApiRoomState | null>(null);
   const [session, setSession] = useState<RoomSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +52,10 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
   const [now, setNow] = useState(() => Date.now());
   const [showRoomPanel, setShowRoomPanel] = useState(false);
   const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
+  const [pendingChoiceId, setPendingChoiceId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"start" | "rematch" | null>(null);
+  const [showPackPicker, setShowPackPicker] = useState(false);
+  const [nextPackId, setNextPackId] = useState("");
   const [joinState, setJoinState] = useState<JoinState>({
     nickname: "",
     busy: false,
@@ -82,6 +112,17 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     setPresenceReady(false);
     refreshState();
   }, [code, refreshState]);
+
+  useEffect(() => {
+    const savedNickname = readSavedNickname();
+
+    if (savedNickname) {
+      setJoinState((current) => ({
+        ...current,
+        nickname: current.nickname || savedNickname
+      }));
+    }
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -214,13 +255,44 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     return () => window.clearTimeout(timeout);
   }, [copiedField]);
 
+  useEffect(() => {
+    if (state?.pack.packId) {
+      setNextPackId(state.pack.packId);
+    }
+  }, [state?.pack.packId]);
+
+  useEffect(() => {
+    const activeNode = state?.currentNode;
+
+    if (!activeNode) {
+      setPendingChoiceId(null);
+      return;
+    }
+
+    if (state?.votes.some((vote) => vote.player_id === session?.playerId && vote.node_id === activeNode.id)) {
+      setPendingChoiceId(null);
+    }
+  }, [session?.playerId, state?.currentNode, state?.votes]);
+
+  useEffect(() => {
+    if (state?.room.phase !== "lobby") {
+      setPendingAction((current) => (current === "start" ? null : current));
+    }
+
+    if (state?.room.phase === "lobby") {
+      setPendingAction((current) => (current === "rematch" ? null : current));
+    }
+  }, [state?.room.phase]);
+
   const me = session && state ? state.players.find((player) => player.id === session.playerId) ?? null : null;
   const isLobby = state?.room.phase === "lobby";
   const inviteUrl =
     typeof window === "undefined" || !state ? "" : `${window.location.origin}/room/${state.room.code}`;
   const currentNode = state?.currentNode ?? null;
   const currentChoices = useMemo(() => currentNode?.choices ?? [], [currentNode]);
-  const totalVotes = state?.votes.length ?? 0;
+  const totalVotes =
+    (state?.votes.length ?? 0) +
+    (pendingChoiceId && !state?.votes.some((vote) => vote.player_id === session?.playerId) ? 1 : 0);
   const playerCount = state?.players.length ?? 0;
 
   const liveVoteCounts = useMemo(() => {
@@ -230,12 +302,16 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
       counts[vote.selected_choice_id] = (counts[vote.selected_choice_id] ?? 0) + 1;
     }
 
+    if (pendingChoiceId && !state?.votes.some((vote) => vote.player_id === session?.playerId)) {
+      counts[pendingChoiceId] = (counts[pendingChoiceId] ?? 0) + 1;
+    }
+
     return counts;
-  }, [currentChoices, state?.votes]);
+  }, [currentChoices, pendingChoiceId, session?.playerId, state?.votes]);
 
   const hasVoted = Boolean(
     me && currentNode && state?.votes.some((vote) => vote.player_id === me.id && vote.node_id === currentNode.id)
-  );
+  ) || Boolean(pendingChoiceId);
 
   const visibleVoteSnapshot =
     state?.room.phase === "reveal" || state?.room.phase === "ended" ? state.lastEvent?.vote_snapshot ?? null : null;
@@ -243,6 +319,16 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
   const secondsRemaining = state?.room.phase_deadline
     ? Math.max(0, Math.ceil((new Date(state.room.phase_deadline).getTime() - now) / 1000))
     : 0;
+  const phaseDurationSeconds =
+    state?.room.phase === "voting"
+      ? VOTE_DURATION_SECONDS
+      : state?.room.phase === "reveal"
+        ? REVEAL_DURATION_SECONDS
+        : 0;
+  const phaseProgressPercent =
+    phaseDurationSeconds > 0
+      ? Math.max(0, Math.min(100, ((phaseDurationSeconds - secondsRemaining) / phaseDurationSeconds) * 100))
+      : 0;
 
   async function handleJoinRoom() {
     setJoinState((current) => ({
@@ -277,6 +363,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
       };
 
       writeRoomSession(code, nextSession);
+      writeSavedNickname(payload.nickname);
       setSession(nextSession);
       setJoinState({
         nickname: payload.nickname,
@@ -293,10 +380,25 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     }
   }
 
-  async function postToRoom(path: string, body: Record<string, string> = {}) {
+  async function postToRoom(
+    path: string,
+    body: Record<string, string> = {},
+    options?: {
+      optimisticChoiceId?: string;
+      optimisticAction?: "start" | "rematch";
+    }
+  ) {
     if (!session) {
       setError("Missing local player session.");
       return;
+    }
+
+    if (options?.optimisticChoiceId) {
+      setPendingChoiceId(options.optimisticChoiceId);
+    }
+
+    if (options?.optimisticAction) {
+      setPendingAction(options.optimisticAction);
     }
 
     const response = await fetch(`/api/rooms/${code}${path}`, {
@@ -314,11 +416,19 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      if (options?.optimisticChoiceId) {
+        setPendingChoiceId(null);
+      }
+
+      if (options?.optimisticAction) {
+        setPendingAction(null);
+      }
+
       setError(payload.error ?? "Request failed.");
       return;
     }
 
-    await refreshState();
+    void refreshState();
   }
 
   async function copyValue(value: string, field: "code" | "link") {
@@ -373,14 +483,20 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
               onClick={() => copyValue(state.room.code, "code")}
               type="button"
             >
-              {copiedField === "code" ? "Code copied" : "Copy code"}
+              <span className="button-content">
+                <CopyIcon className="button-icon" />
+                <span>{copiedField === "code" ? "Code copied" : "Copy code"}</span>
+              </span>
             </button>
             <button
               className={`button-secondary ${copiedField === "link" ? "is-success" : ""}`}
               onClick={() => copyValue(inviteUrl, "link")}
               type="button"
             >
-              {copiedField === "link" ? "Link copied" : "Copy room link"}
+              <span className="button-content">
+                <LinkIcon className="button-icon" />
+                <span>{copiedField === "link" ? "Link copied" : "Copy room link"}</span>
+              </span>
             </button>
           </div>
         </section>
@@ -390,14 +506,20 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
             <div className="section-tag">Live game</div>
             <div className="compact-title-row">
               <button className="button-ghost" onClick={() => setShowRoomPanel((current) => !current)} type="button">
-                {showRoomPanel ? "Hide room details" : "Show room details"}
+                <span className="button-content">
+                  {showRoomPanel ? <EyeOffIcon className="button-icon" /> : <EyeIcon className="button-icon" />}
+                  <span>{showRoomPanel ? "Hide room details" : "Show room details"}</span>
+                </span>
               </button>
             </div>
           </div>
           <div className="room-meta">
             <span>Code {state.room.code}</span>
             <span>Round {state.room.round || 0}</span>
-            <span>{playerCount} players</span>
+            <span className="meta-with-icon">
+              <UsersIcon className="meta-icon" />
+              <span>{playerCount} players</span>
+            </span>
           </div>
         </section>
       )}
@@ -470,11 +592,15 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
                 {me?.is_host ? (
                   <button
                     className="button-primary lobby-start-button"
-                    disabled={playerCount < MIN_PLAYERS}
-                    onClick={() => postToRoom("/start")}
+                    disabled={playerCount < MIN_PLAYERS || pendingAction === "start"}
+                    onClick={() => postToRoom("/start", {}, { optimisticAction: "start" })}
                     type="button"
                   >
-                    {playerCount < MIN_PLAYERS ? `Need ${MIN_PLAYERS}+ players` : "Start round one"}
+                    {playerCount < MIN_PLAYERS
+                      ? `Need ${MIN_PLAYERS}+ players`
+                      : pendingAction === "start"
+                        ? "Starting..."
+                        : "Start round one"}
                   </button>
                 ) : (
                   <p className="helper-text">Waiting for the host to start the chaos.</p>
@@ -490,15 +616,28 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
                     <h2>{state.currentNode.prompt}</h2>
                   </div>
                   <div className="stage-pills">
-                    <span className="timer-chip">{secondsRemaining}s left</span>
-                    <span className="timer-chip">{totalVotes}/{playerCount} voted</span>
+                    <span className="timer-chip meta-with-icon">
+                      <ClockIcon className="meta-icon" />
+                      <span>{secondsRemaining}s left</span>
+                    </span>
+                    <span className="timer-chip meta-with-icon">
+                      <UsersIcon className="meta-icon" />
+                      <span>{totalVotes}/{playerCount} voted</span>
+                    </span>
                   </div>
+                </div>
+                <div
+                  aria-hidden="true"
+                  className={`phase-progress ${secondsRemaining <= 5 ? "is-urgent" : ""}`}
+                >
+                  <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
 
                 <div className="choice-list">
                   {state.currentNode.choices.map((choice) => {
                     const selected =
-                      me && state.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id);
+                      (me && state.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id)) ||
+                      pendingChoiceId === choice.id;
                     const liveCount = liveVoteCounts[choice.id] ?? 0;
 
                     return (
@@ -506,7 +645,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
                         key={choice.id}
                         className={`choice-button ${selected ? "selected" : ""} ${hasVoted && !selected ? "locked" : ""}`}
                         disabled={hasVoted}
-                        onClick={() => postToRoom("/vote", { choiceId: choice.id })}
+                        onClick={() => postToRoom("/vote", { choiceId: choice.id }, { optimisticChoiceId: choice.id })}
                         type="button"
                       >
                         <span className="choice-copy">{choice.label}</span>
@@ -529,15 +668,31 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
               <>
                 <div className="stage-header">
                   <div>
-                    <div className="section-tag">Majority decided</div>
-                    <h2>{state.lastEvent.selected_choice_label}</h2>
+                    <div className={`section-tag ${state.lastEvent.resolution_type !== "majority" ? "section-tag-chaos" : ""}`}>
+                      {state.lastEvent.resolution_label}
+                    </div>
                   </div>
                   <div className="stage-pills">
-                    <span className="timer-chip">{secondsRemaining}s until next round</span>
-                    <span className="timer-chip">{playerCount} in room</span>
+                    <span className="timer-chip meta-with-icon">
+                      <ClockIcon className="meta-icon" />
+                      <span>{secondsRemaining}s until next round</span>
+                    </span>
+                    <span className="timer-chip meta-with-icon">
+                      <UsersIcon className="meta-icon" />
+                      <span>{playerCount} in room</span>
+                    </span>
                   </div>
                 </div>
-                <p className="result-card">{state.lastEvent.result_text}</p>
+                <div aria-hidden="true" className="phase-progress is-reveal">
+                  <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
+                </div>
+                <section
+                  className={`payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""}`}
+                >
+                  <p className="payoff-kicker">{getRevealKicker(state.lastEvent.resolution_type)}</p>
+                  <h2 className="payoff-headline">{state.lastEvent.selected_choice_label}</h2>
+                  <p className="payoff-body">{state.lastEvent.result_text}</p>
+                </section>
                 <div className="vote-bar-group">{renderVoteRows(currentChoices, visibleVoteSnapshot ?? {}, true)}</div>
               </>
             ) : null}
@@ -545,14 +700,74 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
             {state.room.phase === "ended" ? (
               <>
                 <div className="section-tag">Ending</div>
-                <h2>{state.currentNode?.prompt ?? "The room survived, technically."}</h2>
-                <p className="result-card">
-                  Final recap from {state.events.length} decisions. The room can rematch immediately or switch packs.
-                </p>
+                <section className="payoff-card payoff-card-ending">
+                  <p className="payoff-kicker">Final chaos unlocked</p>
+                  <h2 className="payoff-headline">{state.currentNode?.prompt ?? "The room survived, technically."}</h2>
+                  <p className="payoff-body">
+                    Final recap from {state.events.length} decisions. The room can rematch immediately or switch packs.
+                  </p>
+                </section>
                 {me?.is_host ? (
-                  <button className="button-primary" onClick={() => postToRoom("/rematch")} type="button">
-                    Rematch this pack
-                  </button>
+                  <>
+                    <div className="ending-actions">
+                      <button
+                        className="button-primary"
+                        disabled={pendingAction === "rematch"}
+                        onClick={() => postToRoom("/rematch", {}, { optimisticAction: "rematch" })}
+                        type="button"
+                      >
+                        <span className="button-content">
+                          <RotateIcon className="button-icon" />
+                          <span>{pendingAction === "rematch" ? "Resetting..." : "Rematch this pack"}</span>
+                        </span>
+                      </button>
+                      <button
+                        className="button-secondary"
+                        disabled={pendingAction === "rematch"}
+                        onClick={() => setShowPackPicker((current) => !current)}
+                        type="button"
+                      >
+                        <span className="button-content">
+                          <SparklesIcon className="button-icon" />
+                          <span>{showPackPicker ? "Cancel switch" : "Switch packs"}</span>
+                        </span>
+                      </button>
+                      <button className="button-ghost" onClick={() => router.push("/")} type="button">
+                        <span className="button-content">
+                          <DoorIcon className="button-icon" />
+                          <span>Create new room</span>
+                        </span>
+                      </button>
+                    </div>
+
+                    {showPackPicker ? (
+                      <div className="ending-pack-picker">
+                        <label className="field">
+                          <span>Choose next pack</span>
+                          <select value={nextPackId} onChange={(event) => setNextPackId(event.target.value)}>
+                            {packs.map((pack) => (
+                              <option key={pack.packId} value={pack.packId}>
+                                {pack.title} · {pack.theme}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          className="button-secondary"
+                          disabled={pendingAction === "rematch" || nextPackId === state.pack.packId}
+                          onClick={() =>
+                            postToRoom("/rematch", { packId: nextPackId }, { optimisticAction: "rematch" })
+                          }
+                          type="button"
+                        >
+                          <span className="button-content">
+                            <SparklesIcon className="button-icon" />
+                            <span>{pendingAction === "rematch" ? "Switching..." : "Start lobby with this pack"}</span>
+                          </span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
                 <div className="recap-grid">
                   <article className="recap-card">
@@ -577,9 +792,13 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
               <div className="section-tag">Decision trail</div>
               <div className="timeline">
                 {state.events.map((event) => (
-                  <article className="timeline-item" key={event.id}>
+                  <article
+                    className={`timeline-item ${event.resolution_type !== "majority" ? "timeline-item-chaos" : ""}`}
+                    key={event.id}
+                  >
                     <span>Round {event.round}</span>
                     <h3>{event.prompt}</h3>
+                    <strong className="timeline-resolution">{event.resolution_label}</strong>
                     <p>{event.selected_choice_label}</p>
                     <small>{event.result_text}</small>
                   </article>
@@ -609,6 +828,17 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
               <span>Vote timer {VOTE_DURATION_SECONDS}s</span>
               <span>Reveal timer {REVEAL_DURATION_SECONDS}s</span>
             </div>
+
+            <button
+              className={`button-ghost room-copy-link ${copiedField === "link" ? "is-success" : ""}`}
+              onClick={() => copyValue(inviteUrl, "link")}
+              type="button"
+            >
+              <span className="button-content">
+                <LinkIcon className="button-icon" />
+                <span>{copiedField === "link" ? "Link copied" : "Copy room link"}</span>
+              </span>
+            </button>
           </section>
         </aside>
       </section>

@@ -47,6 +47,8 @@ create table if not exists public.game_events (
   selected_choice_label text not null,
   next_node_id text not null,
   result_text text not null,
+  resolution_type text not null default 'majority',
+  resolution_label text not null default 'Majority decided',
   vote_snapshot jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now())
 );

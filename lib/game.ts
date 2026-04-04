@@ -4,6 +4,7 @@ import type {
   GameEventRecord,
   GamePhase,
   PublicPlayer,
+  ResolutionType,
   RoomRecord,
   VoteRecord
 } from "@/lib/types";
@@ -64,22 +65,49 @@ export function tallyVotes(choices: Choice[], votes: VoteRecord[]) {
     voteSnapshot[vote.selected_choice_id] = (voteSnapshot[vote.selected_choice_id] ?? 0) + 1;
   }
 
-  let winningChoice = choices[0];
-  let bestCount = voteSnapshot[winningChoice.id] ?? 0;
-
-  for (const choice of choices) {
-    const count = voteSnapshot[choice.id] ?? 0;
-
-    if (count > bestCount) {
-      winningChoice = choice;
-      bestCount = count;
-    }
-  }
+  const rankedChoices = choices.map((choice) => ({
+    choice,
+    count: voteSnapshot[choice.id] ?? 0
+  }));
+  const bestCount = rankedChoices.reduce((highest, entry) => Math.max(highest, entry.count), 0);
+  const tiedChoices = rankedChoices
+    .filter((entry) => entry.count === bestCount)
+    .map((entry) => entry.choice);
+  const totalVotes = votes.length;
+  const resolutionType: ResolutionType =
+    totalVotes === 0 ? "indecision_no_vote" : tiedChoices.length > 1 ? "indecision_tie" : "majority";
+  const candidateChoices = totalVotes === 0 ? choices : tiedChoices;
+  const winningChoice = candidateChoices[Math.floor(Math.random() * candidateChoices.length)];
 
   return {
     winningChoice,
-    voteSnapshot
+    voteSnapshot,
+    resolutionType
   };
+}
+
+function getResolutionLabel(resolutionType: ResolutionType) {
+  switch (resolutionType) {
+    case "indecision_tie":
+      return "Indecision event";
+    case "indecision_no_vote":
+      return "Silence event";
+    case "majority":
+    default:
+      return "Majority decided";
+  }
+}
+
+function getResolutionLead(resolutionType: ResolutionType, winningChoice: Choice) {
+  switch (resolutionType) {
+    case "indecision_tie":
+      return `The room split itself in half, so chaos cut in and slammed everyone into "${winningChoice.label}".`;
+    case "indecision_no_vote":
+      return `Nobody committed, so the room triggered a special event and got shoved into "${winningChoice.label}".`;
+    case "majority":
+    default:
+      return `The room chose "${winningChoice.label}".`;
+  }
 }
 
 export function buildEventRecord(room: RoomRecord, votes: VoteRecord[]) {
@@ -89,13 +117,16 @@ export function buildEventRecord(room: RoomRecord, votes: VoteRecord[]) {
     throw new Error("Missing current node while building game event.");
   }
 
-  const { winningChoice, voteSnapshot } = tallyVotes(node.choices, votes);
+  const { winningChoice, voteSnapshot, resolutionType } = tallyVotes(node.choices, votes);
 
   return {
     round: room.round,
     node,
     winningChoice,
     voteSnapshot,
+    resolutionType,
+    resolutionLabel: getResolutionLabel(resolutionType),
+    resolutionLead: getResolutionLead(resolutionType, winningChoice),
     resultText:
       winningChoice.resultText ??
       node.resultText ??
@@ -115,6 +146,8 @@ export function createGameEventInsert(room: RoomRecord, votes: VoteRecord[]) {
     selected_choice_label: event.winningChoice.label,
     next_node_id: event.winningChoice.nextNodeId,
     result_text: event.resultText,
+    resolution_type: event.resolutionType,
+    resolution_label: event.resolutionLabel,
     vote_snapshot: event.voteSnapshot
   };
 }

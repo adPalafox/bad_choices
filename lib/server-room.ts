@@ -155,6 +155,7 @@ export async function createRoom(hostName: string, packId: string, sessionId: st
 export async function joinRoom(code: string, nickname: string, sessionId: string) {
   const supabase = getSupabaseAdminClient();
   const room = await getRoomByCode(code);
+  const normalizedNickname = nickname.trim();
 
   const { data: existingSessionPlayer } = await supabase
     .from("players")
@@ -177,6 +178,34 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
     };
   }
 
+  const { data: duplicate } = await supabase
+    .from("players")
+    .select("id,nickname,connected")
+    .eq("room_id", room.id)
+    .ilike("nickname", normalizedNickname)
+    .maybeSingle();
+
+  if (duplicate && !duplicate.connected) {
+    const { data: reclaimedPlayer, error: reclaimError } = await supabase
+      .from("players")
+      .update({
+        session_id: sessionId,
+        connected: true
+      })
+      .eq("id", duplicate.id)
+      .select("id,nickname")
+      .single();
+
+    if (reclaimError || !reclaimedPlayer) {
+      throw new Error("Failed to reclaim player session.");
+    }
+
+    return {
+      playerId: reclaimedPlayer.id,
+      nickname: reclaimedPlayer.nickname
+    };
+  }
+
   if (room.status !== "lobby") {
     throw new Error("This room has already started.");
   }
@@ -190,13 +219,6 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
     throw new Error("This room is full.");
   }
 
-  const { data: duplicate } = await supabase
-    .from("players")
-    .select("id")
-    .eq("room_id", room.id)
-    .ilike("nickname", nickname.trim())
-    .maybeSingle();
-
   if (duplicate) {
     throw new Error("Nickname is already taken in this room.");
   }
@@ -206,7 +228,7 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
     .insert({
       room_id: room.id,
       session_id: sessionId,
-      nickname: nickname.trim(),
+      nickname: normalizedNickname,
       is_host: false,
       connected: true
     })
@@ -219,7 +241,7 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
 
   return {
     playerId: player.id,
-    nickname: nickname.trim()
+    nickname: normalizedNickname
   };
 }
 
@@ -326,12 +348,16 @@ export async function castVote(code: string, playerId: string, sessionId: string
   await resolveRoom(code);
 }
 
-export async function rematchRoom(code: string, sessionId: string) {
+export async function rematchRoom(code: string, sessionId: string, packId?: string) {
   const supabase = getSupabaseAdminClient();
   const room = await getRoomByCode(code);
 
   if (room.host_session_id !== sessionId) {
     throw new Error("Only the host can rematch.");
+  }
+
+  if (packId) {
+    getScenarioPack(packId);
   }
 
   await Promise.all([
@@ -345,6 +371,7 @@ export async function rematchRoom(code: string, sessionId: string) {
       status: "lobby",
       phase: "lobby",
       round: 0,
+      scenario_pack: packId ?? room.scenario_pack,
       current_node_id: null,
       pending_node_id: null,
       phase_deadline: null

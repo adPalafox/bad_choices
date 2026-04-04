@@ -7,12 +7,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const { code } = await params;
     const body = await request.json();
     const sessionId = String(body.sessionId ?? "").trim();
+    const packId = body.packId ? String(body.packId).trim() : undefined;
 
     if (!sessionId) {
       return NextResponse.json({ error: "Session is required." }, { status: 400 });
     }
 
-    await rematchRoom(code, sessionId);
+    await rematchRoom(code, sessionId, packId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

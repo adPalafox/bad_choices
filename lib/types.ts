@@ -1,4 +1,5 @@
 export type GamePhase = "lobby" | "voting" | "reveal" | "ended";
+export type ResolutionType = "majority" | "indecision_tie" | "indecision_no_vote";
 
 export type Choice = {
   id: string;
@@ -69,6 +70,8 @@ export type GameEventRecord = {
   selected_choice_label: string;
   next_node_id: string;
   result_text: string;
+  resolution_type: ResolutionType;
+  resolution_label: string;
   vote_snapshot: Record<string, number>;
   created_at: string;
 };

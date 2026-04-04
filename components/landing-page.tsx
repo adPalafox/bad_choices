@@ -3,8 +3,9 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DoorIcon, PlusIcon } from "@/components/ui-icons";
 import { createSessionId, MIN_PLAYERS } from "@/lib/game";
-import { writeRoomSession } from "@/lib/room-session";
+import { readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
 import type { ScenarioPack } from "@/lib/types";
 
 type LandingPageProps = {
@@ -15,9 +16,10 @@ type LandingMode = "join" | "create";
 
 export function LandingPage({ packs }: LandingPageProps) {
   const router = useRouter();
+  const savedNickname = readSavedNickname();
   const [mode, setMode] = useState<LandingMode>("join");
-  const [hostName, setHostName] = useState("");
-  const [joinName, setJoinName] = useState("");
+  const [hostName, setHostName] = useState(savedNickname);
+  const [joinName, setJoinName] = useState(savedNickname);
   const [joinCode, setJoinCode] = useState("");
   const [packId, setPackId] = useState(packs[0]?.packId ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export function LandingPage({ packs }: LandingPageProps) {
       playerId: payload.playerId,
       nickname: hostName.trim()
     });
+    writeSavedNickname(hostName);
     router.push(`/room/${payload.roomCode}`);
   }
 
@@ -92,6 +95,7 @@ export function LandingPage({ packs }: LandingPageProps) {
       playerId: payload.playerId,
       nickname: payload.nickname
     });
+    writeSavedNickname(payload.nickname);
     router.push(`/room/${normalizedCode}`);
   }
 
@@ -175,7 +179,10 @@ export function LandingPage({ packs }: LandingPageProps) {
             </label>
 
             <button className="button-primary landing-cta" disabled={busy === "join"} type="submit">
-              {busy === "join" ? "Joining..." : "Join room"}
+              <span className="button-content">
+                <DoorIcon className="button-icon" />
+                <span>{busy === "join" ? "Joining..." : "Join room"}</span>
+              </span>
             </button>
           </form>
 
@@ -211,7 +218,10 @@ export function LandingPage({ packs }: LandingPageProps) {
             </label>
 
             <button className="button-ghost" disabled={busy === "create"} type="submit">
-              {busy === "create" ? "Creating room..." : "Create room"}
+              <span className="button-content">
+                <PlusIcon className="button-icon" />
+                <span>{busy === "create" ? "Creating room..." : "Create room"}</span>
+              </span>
             </button>
           </form>
         </div>
