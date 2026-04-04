@@ -14,7 +14,7 @@ import {
   SparklesIcon,
   UsersIcon
 } from "@/components/ui-icons";
-import { createSessionId, MIN_PLAYERS, REVEAL_DURATION_SECONDS, VOTE_DURATION_SECONDS } from "@/lib/game";
+import { createSessionId, REVEAL_DURATION_SECONDS, START_MIN_PLAYERS, VOTE_DURATION_SECONDS } from "@/lib/game";
 import { readRoomSession, readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import type { ApiRoomState, Choice, ResolutionType, RoomSession, ScenarioPack } from "@/lib/types";
@@ -592,12 +592,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 {me?.is_host ? (
                   <button
                     className="button-primary lobby-start-button"
-                    disabled={playerCount < MIN_PLAYERS || pendingAction === "start"}
+                    disabled={playerCount < START_MIN_PLAYERS || pendingAction === "start"}
                     onClick={() => postToRoom("/start", {}, { optimisticAction: "start" })}
                     type="button"
                   >
-                    {playerCount < MIN_PLAYERS
-                      ? `Need ${MIN_PLAYERS}+ players`
+                    {playerCount < START_MIN_PLAYERS
+                      ? `Need ${START_MIN_PLAYERS}+ players`
                       : pendingAction === "start"
                         ? "Starting..."
                         : "Start round one"}

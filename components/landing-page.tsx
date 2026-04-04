@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DoorIcon, PlusIcon } from "@/components/ui-icons";
-import { createSessionId, MIN_PLAYERS } from "@/lib/game";
+import { createSessionId, MAX_PLAYERS, START_MIN_PLAYERS, VOTE_DURATION_SECONDS } from "@/lib/game";
 import { readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
 import type { ScenarioPack } from "@/lib/types";
 
@@ -109,8 +109,8 @@ export function LandingPage({ packs }: LandingPageProps) {
           blame the majority. Built for friends, dates, teams, Discord calls, and stream chat.
         </p>
         <div className="hero-stats">
-          <span>{MIN_PLAYERS}-8 players</span>
-          <span>15-second rounds</span>
+          <span>{START_MIN_PLAYERS}-{MAX_PLAYERS} players</span>
+          <span>{VOTE_DURATION_SECONDS}-second rounds</span>
           <span>3 launch packs</span>
         </div>
       </section>

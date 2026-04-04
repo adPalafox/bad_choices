@@ -7,7 +7,7 @@ import {
   getNextPhaseAfterReveal,
   getPhaseDeadline,
   MAX_PLAYERS,
-  MIN_PLAYERS,
+  START_MIN_PLAYERS,
   REVEAL_DURATION_SECONDS,
   VOTE_DURATION_SECONDS
 } from "@/lib/game";
@@ -279,8 +279,8 @@ export async function startRoom(code: string, sessionId: string) {
     .eq("room_id", room.id)
     .returns<PlayerRecord[]>();
 
-  if ((players?.length ?? 0) < MIN_PLAYERS) {
-    throw new Error(`Need at least ${MIN_PLAYERS} players to start.`);
+  if ((players?.length ?? 0) < START_MIN_PLAYERS) {
+    throw new Error(`Need at least ${START_MIN_PLAYERS} players to start.`);
   }
 
   const pack = getScenarioPack(room.scenario_pack);

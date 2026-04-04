@@ -10,9 +10,10 @@ import type {
 } from "@/lib/types";
 
 export const MAX_PLAYERS = 8;
-export const MIN_PLAYERS = 1;
+export const MIN_PLAYERS = 3;
 export const VOTE_DURATION_SECONDS = 15;
 export const REVEAL_DURATION_SECONDS = 5;
+export const START_MIN_PLAYERS = process.env.NODE_ENV === "production" ? MIN_PLAYERS : 1;
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
