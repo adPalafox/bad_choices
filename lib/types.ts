@@ -4,6 +4,7 @@ export type Choice = {
   id: string;
   label: string;
   nextNodeId: string;
+  resultText?: string;
 };
 
 export type ScenarioNode = {

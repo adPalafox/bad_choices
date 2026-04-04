@@ -9,9 +9,9 @@
       "prompt": "Your manager says today's trust exercise will involve a fog machine and one live goose.",
       "resultText": "The room chooses how publicly this offsite will fail.",
       "choices": [
-        { "id": "team_1_a", "label": "Follow the goose", "nextNodeId": "team_2" },
-        { "id": "team_1_b", "label": "Pitch synergy deck", "nextNodeId": "team_3" },
-        { "id": "team_1_c", "label": "Hide in catering", "nextNodeId": "team_4" }
+        { "id": "team_1_a", "label": "Follow the goose", "nextNodeId": "team_2", "resultText": "The room decides the goose has the strongest leadership energy in the building." },
+        { "id": "team_1_b", "label": "Pitch synergy deck", "nextNodeId": "team_3", "resultText": "Instead of escaping, the team volunteers a slide deck and makes the offsite worse on purpose." },
+        { "id": "team_1_c", "label": "Hide in catering", "nextNodeId": "team_4", "resultText": "Morale collapses into a buffet strategy and everyone pretends that counts as alignment." }
       ]
     },
     {
@@ -19,8 +19,8 @@
       "prompt": "The goose leads everyone into the CEO's meditation pod.",
       "resultText": "The room converts a bird incident into executive disruption.",
       "choices": [
-        { "id": "team_2_a", "label": "Call it innovation", "nextNodeId": "team_5" },
-        { "id": "team_2_b", "label": "Elect the goose chair", "nextNodeId": "team_6" }
+        { "id": "team_2_a", "label": "Call it innovation", "nextNodeId": "team_5", "resultText": "The room reframes a bird incident as disruptive thinking and drags leadership into it." },
+        { "id": "team_2_b", "label": "Elect the goose chair", "nextNodeId": "team_6", "resultText": "Democracy fails instantly and the goose acquires executive authority." }
       ]
     },
     {
@@ -28,8 +28,8 @@
       "prompt": "Your slide deck opens with a typo so bad that finance starts crying.",
       "resultText": "The room decides whether to double down or weaponize confidence.",
       "choices": [
-        { "id": "team_3_a", "label": "Present harder", "nextNodeId": "team_5" },
-        { "id": "team_3_b", "label": "Blame auto-correct", "nextNodeId": "team_6" }
+        { "id": "team_3_a", "label": "Present harder", "nextNodeId": "team_5", "resultText": "The room mistakes volume for recovery and turns the typo into a company-wide event." },
+        { "id": "team_3_b", "label": "Blame auto-correct", "nextNodeId": "team_6", "resultText": "The deck dies, accountability evaporates, and the goose keeps gaining power." }
       ]
     },
     {
@@ -37,8 +37,8 @@
       "prompt": "Catering is only sparkling water and one suspicious sheet cake.",
       "resultText": "The room chooses the exact flavor of morale collapse.",
       "choices": [
-        { "id": "team_4_a", "label": "Launch cake committee", "nextNodeId": "team_5" },
-        { "id": "team_4_b", "label": "Expense the vibes", "nextNodeId": "team_6" }
+        { "id": "team_4_a", "label": "Launch cake committee", "nextNodeId": "team_5", "resultText": "The room creates governance around one suspicious cake and accidentally triggers HR." },
+        { "id": "team_4_b", "label": "Expense the vibes", "nextNodeId": "team_6", "resultText": "Someone tries filing morale as an expense and the goose emerges as the only adult present." }
       ]
     },
     {

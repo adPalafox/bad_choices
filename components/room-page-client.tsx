@@ -1,11 +1,11 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createSessionId, MIN_PLAYERS, REVEAL_DURATION_SECONDS, VOTE_DURATION_SECONDS } from "@/lib/game";
-import { getBrowserSupabaseClient } from "@/lib/supabase";
 import { readRoomSession, writeRoomSession } from "@/lib/room-session";
-import type { ApiRoomState, RoomSession } from "@/lib/types";
+import { getBrowserSupabaseClient } from "@/lib/supabase";
+import type { ApiRoomState, Choice, RoomSession } from "@/lib/types";
 
 type RoomPageClientProps = {
   code: string;
@@ -23,6 +23,8 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [showRoomPanel, setShowRoomPanel] = useState(false);
+  const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
   const [joinState, setJoinState] = useState<JoinState>({
     nickname: "",
     busy: false,
@@ -51,10 +53,36 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     }
   }, [code]);
 
+  const syncPresence = useCallback(
+    async (nextConnected: boolean, activeSession: RoomSession) => {
+      await fetch(`/api/rooms/${code}/presence`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sessionId: activeSession.sessionId,
+          playerId: activeSession.playerId,
+          connected: nextConnected
+        }),
+        keepalive: !nextConnected
+      });
+    },
+    [code]
+  );
+
   useEffect(() => {
     setSession(readRoomSession(code));
     refreshState();
   }, [code, refreshState]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!state?.room.id) {
@@ -97,14 +125,6 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
   }, [refreshState, state?.room.id]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (!state?.room.phase_deadline || (state.room.phase !== "voting" && state.room.phase !== "reveal")) {
       return;
     }
@@ -122,10 +142,81 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     return () => window.clearInterval(interval);
   }, [code, state?.room.phase, state?.room.phase_deadline]);
 
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    void syncPresence(true, session).then(refreshState).catch(() => undefined);
+
+    const markDisconnected = () => {
+      const payload = JSON.stringify({
+        sessionId: session.sessionId,
+        playerId: session.playerId,
+        connected: false
+      });
+
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(`/api/rooms/${code}/presence`, payload);
+        return;
+      }
+
+      void fetch(`/api/rooms/${code}/presence`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: payload,
+        keepalive: true
+      });
+    };
+
+    window.addEventListener("pagehide", markDisconnected);
+    window.addEventListener("beforeunload", markDisconnected);
+
+    return () => {
+      window.removeEventListener("pagehide", markDisconnected);
+      window.removeEventListener("beforeunload", markDisconnected);
+    };
+  }, [code, refreshState, session, syncPresence]);
+
+  useEffect(() => {
+    setShowRoomPanel(state?.room.phase === "lobby");
+  }, [state?.room.phase]);
+
+  useEffect(() => {
+    if (!copiedField) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCopiedField(null);
+    }, 1600);
+
+    return () => window.clearTimeout(timeout);
+  }, [copiedField]);
+
   const me = session && state ? state.players.find((player) => player.id === session.playerId) ?? null : null;
+  const isLobby = state?.room.phase === "lobby";
+  const inviteUrl =
+    typeof window === "undefined" || !state ? "" : `${window.location.origin}/room/${state.room.code}`;
+  const currentNode = state?.currentNode ?? null;
+  const currentChoices = useMemo(() => currentNode?.choices ?? [], [currentNode]);
+  const totalVotes = state?.votes.length ?? 0;
+  const playerCount = state?.players.length ?? 0;
+
+  const liveVoteCounts = useMemo(() => {
+    const counts = Object.fromEntries(currentChoices.map((choice) => [choice.id, 0])) as Record<string, number>;
+
+    for (const vote of state?.votes ?? []) {
+      counts[vote.selected_choice_id] = (counts[vote.selected_choice_id] ?? 0) + 1;
+    }
+
+    return counts;
+  }, [currentChoices, state?.votes]);
 
   const hasVoted = Boolean(
-    me && state?.currentNode && state.votes.some((vote) => vote.player_id === me.id && vote.node_id === state.currentNode?.id)
+    me && currentNode && state?.votes.some((vote) => vote.player_id === me.id && vote.node_id === currentNode.id)
   );
 
   const visibleVoteSnapshot =
@@ -212,6 +303,33 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     await refreshState();
   }
 
+  async function copyValue(value: string, field: "code" | "link") {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+    } catch {
+      setError(`Failed to copy ${field}.`);
+    }
+  }
+
+  function renderVoteRows(choices: Choice[], counts: Record<string, number>, reveal = false) {
+    return choices.map((choice) => {
+      const count = counts[choice.id] ?? 0;
+      const selected = Boolean(
+        me && state?.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id)
+      );
+      const winner = reveal && state?.lastEvent?.selected_choice_id === choice.id;
+
+      return (
+        <div className={`vote-row ${winner ? "winner" : ""}`} key={choice.id}>
+          <span>{choice.label}</span>
+          <strong>{count}</strong>
+          {selected && !reveal ? <em>Your vote</em> : null}
+        </div>
+      );
+    });
+  }
+
   if (loading) {
     return <main className="room-shell">Loading room...</main>;
   }
@@ -220,44 +338,65 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     return <main className="room-shell error-banner">{error ?? "Room not found."}</main>;
   }
 
-  const inviteUrl =
-    typeof window === "undefined" ? "" : `${window.location.origin}/room/${state.room.code}`;
-
   return (
-    <main className="room-shell">
-      <section className="room-header panel">
-        <div>
-          <div className="section-tag">Room {state.room.code}</div>
-          <h1>{state.pack.title}</h1>
-          <p>{state.pack.theme}</p>
-        </div>
-        <div className="room-meta">
-          <span>{state.players.length} players</span>
-          <span>Round {state.room.round || 0}</span>
-          <span>{state.room.phase}</span>
-        </div>
-      </section>
+    <main className={`room-shell ${isLobby ? "mode-lobby" : "mode-game"}`}>
+      {isLobby ? (
+        <section className="share-utility panel">
+          <div className="share-code-block">
+            <div className="section-tag">Room code</div>
+            <div className="share-code-value">{state.room.code}</div>
+            <p>Send the code or copy the room link before the host starts.</p>
+          </div>
+          <div className="share-actions">
+            <button
+              className={`button-ghost ${copiedField === "code" ? "is-success" : ""}`}
+              onClick={() => copyValue(state.room.code, "code")}
+              type="button"
+            >
+              {copiedField === "code" ? "Code copied" : "Copy code"}
+            </button>
+            <button
+              className={`button-secondary ${copiedField === "link" ? "is-success" : ""}`}
+              onClick={() => copyValue(inviteUrl, "link")}
+              type="button"
+            >
+              {copiedField === "link" ? "Link copied" : "Copy room link"}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="compact-header panel">
+          <div className="compact-header-main">
+            <div className="section-tag">Live game</div>
+            <div className="compact-title-row">
+              <button className="button-ghost" onClick={() => setShowRoomPanel((current) => !current)} type="button">
+                {showRoomPanel ? "Hide room" : "Show room"}
+              </button>
+            </div>
+          </div>
+          <div className="room-meta">
+            <span>Code {state.room.code}</span>
+            <span>Round {state.room.round || 0}</span>
+            <span>{playerCount} players</span>
+          </div>
+        </section>
+      )}
 
       {!me ? (
-        <section className="grid-two">
+        <section className={`join-shell ${isLobby ? "join-lobby" : "join-inline"}`}>
           <div className="panel">
-            <div className="section-tag">Invite</div>
-            <h2>Share the code</h2>
-            <p>Room code: {state.room.code}</p>
-            <p>{inviteUrl}</p>
-          </div>
-
-          <div className="panel">
-            <div className="section-tag">Join</div>
-            <h2>Claim a seat</h2>
+            <div className="section-tag">Join this room</div>
+            <h2>{isLobby ? "Claim a seat" : "You are not in this room yet"}</h2>
             {state.room.phase === "lobby" ? (
               <>
+                <p>Invite links drop you directly here. The only thing left is your nickname.</p>
                 <label className="field">
                   <span>Nickname</span>
                   <input
                     value={joinState.nickname}
                     maxLength={24}
                     minLength={2}
+                    placeholder="Moral Liability"
                     onChange={(event) =>
                       setJoinState((current) => ({
                         ...current,
@@ -277,163 +416,170 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
                 {joinState.error ? <p className="error-inline">{joinState.error}</p> : null}
               </>
             ) : (
-              <p>This game already started. New players can join on the next rematch.</p>
+              <p>This round is already underway. New players can jump in on the next rematch.</p>
             )}
           </div>
         </section>
       ) : null}
 
-      <section className="grid-two">
-        <div className="panel">
-          <div className="section-tag">Players</div>
-          <h2>Lobby roster</h2>
-          <ul className="player-list">
-            {state.players.map((player) => (
-              <li key={player.id}>
-                <span>{player.nickname}</span>
-                <span>{player.is_host ? "host" : "crew"}</span>
-              </li>
-            ))}
-          </ul>
+      <section className={`room-layout ${isLobby ? "lobby-layout" : "game-layout"}`}>
+        <div className="stage-column">
+          <section className="panel stage-panel">
+            {isLobby ? (
+              <>
+                <div className="section-tag">How it works</div>
+                <h2>Fast rounds, instant blame</h2>
+                <ol className="number-list">
+                  <li>Read the scenario beat in under five seconds.</li>
+                  <li>Vote before the {VOTE_DURATION_SECONDS}-second clock runs out.</li>
+                  <li>Watch the majority choice create a worse situation.</li>
+                  <li>Repeat until the room reaches a chaotic ending.</li>
+                </ol>
+                {me?.is_host ? (
+                  <button
+                    className="button-primary lobby-start-button"
+                    disabled={playerCount < MIN_PLAYERS}
+                    onClick={() => postToRoom("/start")}
+                    type="button"
+                  >
+                    {playerCount < MIN_PLAYERS ? `Need ${MIN_PLAYERS}+ players` : "Start round one"}
+                  </button>
+                ) : (
+                  <p className="helper-text">Waiting for the host to start the chaos.</p>
+                )}
+              </>
+            ) : null}
 
-          {state.room.phase === "lobby" ? (
-            <>
-              <p className="helper-text">
-                Need {MIN_PLAYERS}+ players to start. Everyone joins anonymously with a nickname only.
-              </p>
-              {me?.is_host ? (
-                <button
-                  className="button-primary"
-                  disabled={state.players.length < MIN_PLAYERS}
-                  onClick={() => postToRoom("/start")}
-                  type="button"
-                >
-                  Start round one
-                </button>
-              ) : (
-                <p className="helper-text">Waiting for the host to start the chaos.</p>
-              )}
-            </>
-          ) : null}
+            {state.room.phase === "voting" && state.currentNode ? (
+              <>
+                <div className="stage-header">
+                  <div>
+                    <div className="section-tag">Vote now</div>
+                    <h2>{state.currentNode.prompt}</h2>
+                  </div>
+                  <div className="stage-pills">
+                    <span className="timer-chip">{secondsRemaining}s left</span>
+                    <span className="timer-chip">{totalVotes}/{playerCount} voted</span>
+                  </div>
+                </div>
 
-          {state.room.phase === "ended" && me?.is_host ? (
-            <button className="button-secondary" onClick={() => postToRoom("/rematch")} type="button">
-              Rematch this pack
-            </button>
-          ) : null}
-        </div>
+                <div className="choice-list">
+                  {state.currentNode.choices.map((choice) => {
+                    const selected =
+                      me && state.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id);
+                    const liveCount = liveVoteCounts[choice.id] ?? 0;
 
-        <div className="panel stage-panel">
-          {state.room.phase === "lobby" ? (
-            <>
-              <div className="section-tag">How it works</div>
-              <h2>Fast rounds, instant blame</h2>
-              <ol className="number-list">
-                <li>Read the scenario beat in under five seconds.</li>
-                <li>Vote before the {VOTE_DURATION_SECONDS}-second clock runs out.</li>
-                <li>Watch the majority choice create a worse situation.</li>
-                <li>Repeat until the room reaches a chaotic ending.</li>
-              </ol>
-            </>
-          ) : null}
+                    return (
+                      <button
+                        key={choice.id}
+                        className={`choice-button ${selected ? "selected" : ""} ${hasVoted && !selected ? "locked" : ""}`}
+                        disabled={hasVoted}
+                        onClick={() => postToRoom("/vote", { choiceId: choice.id })}
+                        type="button"
+                      >
+                        <span className="choice-copy">{choice.label}</span>
+                        <span className="choice-meta">
+                          <strong>{liveCount}</strong>
+                          <small>{selected ? "You" : "votes"}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-          {state.room.phase === "voting" && state.currentNode ? (
-            <>
-              <div className="section-tag">Vote now</div>
-              <h2>{state.currentNode.prompt}</h2>
-              <p className="timer-chip">{secondsRemaining}s left</p>
-              <div className="choice-list">
-                {state.currentNode.choices.map((choice) => {
-                  const selected =
-                    me && state.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id);
+                <p className="helper-text">
+                  {hasVoted ? "Vote locked. Live counts update while the rest of the room decides." : "Pick one fast. No speeches."}
+                </p>
+              </>
+            ) : null}
 
-                  return (
-                    <button
-                      key={choice.id}
-                      className={`choice-button ${selected ? "selected" : ""}`}
-                      disabled={hasVoted}
-                      onClick={() => postToRoom("/vote", { choiceId: choice.id })}
-                      type="button"
-                    >
-                      {choice.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="helper-text">
-                {hasVoted ? "Vote locked. Waiting for the rest of the room." : "Pick one fast. No speeches."}
-              </p>
-            </>
-          ) : null}
+            {state.room.phase === "reveal" && state.lastEvent ? (
+              <>
+                <div className="stage-header">
+                  <div>
+                    <div className="section-tag">Majority decided</div>
+                    <h2>{state.lastEvent.selected_choice_label}</h2>
+                  </div>
+                  <div className="stage-pills">
+                    <span className="timer-chip">{secondsRemaining}s until next round</span>
+                    <span className="timer-chip">{playerCount} in room</span>
+                  </div>
+                </div>
+                <p className="result-card">{state.lastEvent.result_text}</p>
+                <div className="vote-bar-group">{renderVoteRows(currentChoices, visibleVoteSnapshot ?? {}, true)}</div>
+              </>
+            ) : null}
 
-          {state.room.phase === "reveal" && state.lastEvent ? (
-            <>
-              <div className="section-tag">Majority decided</div>
-              <h2>{state.lastEvent.selected_choice_label}</h2>
-              <p className="timer-chip">{secondsRemaining}s until the next mess</p>
-              <p className="result-card">{state.lastEvent.result_text}</p>
-              <div className="vote-bar-group">
-                {Object.entries(visibleVoteSnapshot ?? {}).map(([choiceId, count]) => {
-                  const choiceLabel =
-                    state.currentNode?.choices.find((choice) => choice.id === choiceId)?.label ?? choiceId;
-
-                  return (
-                    <div className="vote-bar" key={choiceId}>
-                      <span>{choiceLabel}</span>
-                      <strong>{count}</strong>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
+            {state.room.phase === "ended" ? (
+              <>
+                <div className="section-tag">Ending</div>
+                <h2>{state.currentNode?.prompt ?? "The room survived, technically."}</h2>
+                <p className="result-card">
+                  Final recap from {state.events.length} decisions. The room can rematch immediately or switch packs.
+                </p>
+                <div className="recap-grid">
+                  <article className="recap-card">
+                    <span>Path taken</span>
+                    <strong>{state.events.map((event) => event.selected_choice_label).join(" → ")}</strong>
+                  </article>
+                  <article className="recap-card">
+                    <span>Participation</span>
+                    <strong>{playerCount} players made it to the end</strong>
+                  </article>
+                  <article className="recap-card">
+                    <span>Rounds completed</span>
+                    <strong>{state.events.length}</strong>
+                  </article>
+                </div>
+              </>
+            ) : null}
+          </section>
 
           {state.room.phase === "ended" ? (
-            <>
-              <div className="section-tag">Ending</div>
-              <h2>{state.currentNode?.prompt ?? "The room survived, technically."}</h2>
-              <p className="result-card">
-                Final recap from {state.events.length} decisions. The room can rematch immediately or switch packs.
-              </p>
-              <div className="recap-grid">
-                <article className="recap-card">
-                  <span>Path taken</span>
-                  <strong>{state.events.map((event) => event.selected_choice_label).join(" → ")}</strong>
-                </article>
-                <article className="recap-card">
-                  <span>Participation</span>
-                  <strong>{state.players.length} players blamed each other</strong>
-                </article>
-                <article className="recap-card">
-                  <span>Rounds completed</span>
-                  <strong>{state.events.length}</strong>
-                </article>
+            <section className="panel">
+              <div className="section-tag">Decision trail</div>
+              <div className="timeline">
+                {state.events.map((event) => (
+                  <article className="timeline-item" key={event.id}>
+                    <span>Round {event.round}</span>
+                    <h3>{event.prompt}</h3>
+                    <p>{event.selected_choice_label}</p>
+                    <small>{event.result_text}</small>
+                  </article>
+                ))}
               </div>
-            </>
+            </section>
           ) : null}
         </div>
-      </section>
 
-      {state.room.phase === "ended" ? (
-        <section className="panel">
-          <div className="section-tag">Decision trail</div>
-          <div className="timeline">
-            {state.events.map((event) => (
-              <article className="timeline-item" key={event.id}>
-                <span>Round {event.round}</span>
-                <h3>{event.prompt}</h3>
-                <p>{event.selected_choice_label}</p>
-                <small>{event.result_text}</small>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
+        <aside className={`room-panel ${showRoomPanel ? "open" : ""}`}>
+          <section className="panel room-side-panel">
+            <div className="section-tag">{isLobby ? "Room details" : "Players"}</div>
+            <h3>{isLobby ? state.pack.title : `Room ${state.room.code}`}</h3>
+            <p>{isLobby ? state.pack.theme : "Live roster and room controls."}</p>
 
-      <section className="footnote-row">
-        <span>Vote timer: {VOTE_DURATION_SECONDS}s</span>
-        <span>Reveal timer: {REVEAL_DURATION_SECONDS}s</span>
-        <span>Invite friends with room code {state.room.code}</span>
+            <ul className="player-list">
+              {state.players.map((player) => (
+                <li key={player.id}>
+                  <span>{player.nickname}</span>
+                  <span>{player.is_host ? "host" : "crew"}</span>
+                </li>
+              ))}
+            </ul>
+
+            {state.room.phase === "ended" && me?.is_host ? (
+              <button className="button-secondary" onClick={() => postToRoom("/rematch")} type="button">
+                Rematch this pack
+              </button>
+            ) : null}
+
+            <div className="room-side-meta">
+              <span>{playerCount} players live</span>
+              <span>Vote timer {VOTE_DURATION_SECONDS}s</span>
+              <span>Reveal timer {REVEAL_DURATION_SECONDS}s</span>
+            </div>
+          </section>
+        </aside>
       </section>
     </main>
   );

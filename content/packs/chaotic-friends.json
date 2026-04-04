@@ -9,9 +9,9 @@
       "prompt": "Your group finds an unattended karaoke machine outside a convenience store.",
       "resultText": "The room picks the exact level of public embarrassment it deserves.",
       "choices": [
-        { "id": "friends_1_a", "label": "Steal the mic", "nextNodeId": "friends_2" },
-        { "id": "friends_1_b", "label": "Sell tickets", "nextNodeId": "friends_3" },
-        { "id": "friends_1_c", "label": "Pretend it's art", "nextNodeId": "friends_4" }
+        { "id": "friends_1_a", "label": "Steal the mic", "nextNodeId": "friends_2", "resultText": "The room lunges for instant karaoke authority and turns a sidewalk into a stage." },
+        { "id": "friends_1_b", "label": "Sell tickets", "nextNodeId": "friends_3", "resultText": "Somebody appoints themselves finance and starts charging strangers for the chaos." },
+        { "id": "friends_1_c", "label": "Pretend it's art", "nextNodeId": "friends_4", "resultText": "Confidence wins. The group rebrands trespassing as an immersive installation." }
       ]
     },
     {
@@ -19,8 +19,8 @@
       "prompt": "Three strangers demand to hear your best breakup anthem right now.",
       "resultText": "The room escalates from cringe to commitment instantly.",
       "choices": [
-        { "id": "friends_2_a", "label": "Scream-sing", "nextNodeId": "friends_5" },
-        { "id": "friends_2_b", "label": "Lip-sync badly", "nextNodeId": "friends_6" }
+        { "id": "friends_2_a", "label": "Scream-sing", "nextNodeId": "friends_5", "resultText": "The breakup anthem becomes a public emergency and somehow boosts ticket sales." },
+        { "id": "friends_2_b", "label": "Lip-sync badly", "nextNodeId": "friends_6", "resultText": "The room commits to fraud with choreography and loses the crowd immediately." }
       ]
     },
     {
@@ -28,8 +28,8 @@
       "prompt": "Someone actually pays and asks if this is a legal event.",
       "resultText": "The room chooses whether to lie with confidence or panic with flair.",
       "choices": [
-        { "id": "friends_3_a", "label": "Say yes confidently", "nextNodeId": "friends_5" },
-        { "id": "friends_3_b", "label": "Run the merch table", "nextNodeId": "friends_6" }
+        { "id": "friends_3_a", "label": "Say yes confidently", "nextNodeId": "friends_5", "resultText": "Your fake festival now has lore, authority, and exactly zero permits." },
+        { "id": "friends_3_b", "label": "Run the merch table", "nextNodeId": "friends_6", "resultText": "The room pivots into merch before having a song, a plan, or legal standing." }
       ]
     },
     {
@@ -37,8 +37,8 @@
       "prompt": "A local influencer starts filming your performance installation.",
       "resultText": "The room picks the flavor of viral regret.",
       "choices": [
-        { "id": "friends_4_a", "label": "Lean into chaos", "nextNodeId": "friends_5" },
-        { "id": "friends_4_b", "label": "Demand sponsorship", "nextNodeId": "friends_6" }
+        { "id": "friends_4_a", "label": "Lean into chaos", "nextNodeId": "friends_5", "resultText": "The influencer clip turns your mess into a movement before anyone can stop it." },
+        { "id": "friends_4_b", "label": "Demand sponsorship", "nextNodeId": "friends_6", "resultText": "The group tries monetizing the bit too early and gets laughed out of the frame." }
       ]
     },
     {

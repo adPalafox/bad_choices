@@ -96,7 +96,10 @@ export function buildEventRecord(room: RoomRecord, votes: VoteRecord[]) {
     node,
     winningChoice,
     voteSnapshot,
-    resultText: node.resultText ?? `Everyone commits to "${winningChoice.label}" and pays for it immediately.`
+    resultText:
+      winningChoice.resultText ??
+      node.resultText ??
+      `Everyone commits to "${winningChoice.label}" and pays for it immediately.`
   };
 }
 

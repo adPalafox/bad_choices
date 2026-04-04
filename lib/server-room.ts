@@ -65,14 +65,16 @@ export async function getRoomState(code: string): Promise<ApiRoomState> {
     throw new Error("Failed to load room state.");
   }
 
-  const publicPlayers: PublicPlayer[] = (players ?? []).map((player) => ({
+  const publicPlayers: PublicPlayer[] = (players ?? [])
+    .filter((player) => player.connected)
+    .map((player) => ({
     id: player.id,
     room_id: player.room_id,
     nickname: player.nickname,
     is_host: player.is_host,
     connected: player.connected,
     joined_at: player.joined_at
-  }));
+    }));
 
   return {
     room,
@@ -154,10 +156,6 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
   const supabase = getSupabaseAdminClient();
   const room = await getRoomByCode(code);
 
-  if (room.status !== "lobby") {
-    throw new Error("This room has already started.");
-  }
-
   const { data: existingSessionPlayer } = await supabase
     .from("players")
     .select("id,nickname")
@@ -166,10 +164,21 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
     .maybeSingle();
 
   if (existingSessionPlayer) {
+    await supabase
+      .from("players")
+      .update({
+        connected: true
+      })
+      .eq("id", existingSessionPlayer.id);
+
     return {
       playerId: existingSessionPlayer.id,
       nickname: existingSessionPlayer.nickname
     };
+  }
+
+  if (room.status !== "lobby") {
+    throw new Error("This room has already started.");
   }
 
   const { count } = await supabase
@@ -212,6 +221,26 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
     playerId: player.id,
     nickname: nickname.trim()
   };
+}
+
+export async function updatePresence(code: string, playerId: string, sessionId: string, connected: boolean) {
+  const supabase = getSupabaseAdminClient();
+  const room = await getRoomByCode(code);
+
+  const { data: player, error } = await supabase
+    .from("players")
+    .update({
+      connected
+    })
+    .eq("id", playerId)
+    .eq("room_id", room.id)
+    .eq("session_id", sessionId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !player) {
+    throw new Error("Failed to update player presence.");
+  }
 }
 
 export async function startRoom(code: string, sessionId: string) {
