@@ -1,0 +1,57 @@
+{
+  "packId": "chaotic-friends",
+  "title": "Chaotic Friends",
+  "theme": "One harmless hang turns into group liability.",
+  "startNodeId": "friends_1",
+  "nodes": [
+    {
+      "id": "friends_1",
+      "prompt": "Your group finds an unattended karaoke machine outside a convenience store.",
+      "resultText": "The room picks the exact level of public embarrassment it deserves.",
+      "choices": [
+        { "id": "friends_1_a", "label": "Steal the mic", "nextNodeId": "friends_2" },
+        { "id": "friends_1_b", "label": "Sell tickets", "nextNodeId": "friends_3" },
+        { "id": "friends_1_c", "label": "Pretend it's art", "nextNodeId": "friends_4" }
+      ]
+    },
+    {
+      "id": "friends_2",
+      "prompt": "Three strangers demand to hear your best breakup anthem right now.",
+      "resultText": "The room escalates from cringe to commitment instantly.",
+      "choices": [
+        { "id": "friends_2_a", "label": "Scream-sing", "nextNodeId": "friends_5" },
+        { "id": "friends_2_b", "label": "Lip-sync badly", "nextNodeId": "friends_6" }
+      ]
+    },
+    {
+      "id": "friends_3",
+      "prompt": "Someone actually pays and asks if this is a legal event.",
+      "resultText": "The room chooses whether to lie with confidence or panic with flair.",
+      "choices": [
+        { "id": "friends_3_a", "label": "Say yes confidently", "nextNodeId": "friends_5" },
+        { "id": "friends_3_b", "label": "Run the merch table", "nextNodeId": "friends_6" }
+      ]
+    },
+    {
+      "id": "friends_4",
+      "prompt": "A local influencer starts filming your performance installation.",
+      "resultText": "The room picks the flavor of viral regret.",
+      "choices": [
+        { "id": "friends_4_a", "label": "Lean into chaos", "nextNodeId": "friends_5" },
+        { "id": "friends_4_b", "label": "Demand sponsorship", "nextNodeId": "friends_6" }
+      ]
+    },
+    {
+      "id": "friends_5",
+      "prompt": "By midnight, half the city thinks you launched a guerrilla music festival.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "friends_6",
+      "prompt": "A mall security guard crowns you the worst organized act of the year.",
+      "ending": true,
+      "choices": []
+    }
+  ]
+}

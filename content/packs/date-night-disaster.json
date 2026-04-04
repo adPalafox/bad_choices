@@ -1,0 +1,57 @@
+{
+  "packId": "date-night-disaster",
+  "title": "Date Night Disaster",
+  "theme": "Romance collapses under confident, terrible decisions.",
+  "startNodeId": "date_1",
+  "nodes": [
+    {
+      "id": "date_1",
+      "prompt": "Halfway through your date, the restaurant lights cut out and a violinist keeps playing.",
+      "resultText": "The room decides how hard to commit to the accidental drama.",
+      "choices": [
+        { "id": "date_1_a", "label": "Propose as a bit", "nextNodeId": "date_2" },
+        { "id": "date_1_b", "label": "Blame the moon", "nextNodeId": "date_3" },
+        { "id": "date_1_c", "label": "Steal dessert first", "nextNodeId": "date_4" }
+      ]
+    },
+    {
+      "id": "date_2",
+      "prompt": "The next table starts cheering and someone offers to livestream the moment.",
+      "resultText": "The room weaponizes secondhand intimacy.",
+      "choices": [
+        { "id": "date_2_a", "label": "Commit to the speech", "nextNodeId": "date_5" },
+        { "id": "date_2_b", "label": "Crowdfund the ring", "nextNodeId": "date_6" }
+      ]
+    },
+    {
+      "id": "date_3",
+      "prompt": "Your date asks whether this line works often for you.",
+      "resultText": "The room chooses between charm failure and honesty failure.",
+      "choices": [
+        { "id": "date_3_a", "label": "Say it never misses", "nextNodeId": "date_5" },
+        { "id": "date_3_b", "label": "Pivot into astrology", "nextNodeId": "date_6" }
+      ]
+    },
+    {
+      "id": "date_4",
+      "prompt": "The waiter catches you holding two spoons and an entire lava cake.",
+      "resultText": "The room turns dessert theft into relationship lore.",
+      "choices": [
+        { "id": "date_4_a", "label": "Offer a bite", "nextNodeId": "date_5" },
+        { "id": "date_4_b", "label": "Claim emotional support cake", "nextNodeId": "date_6" }
+      ]
+    },
+    {
+      "id": "date_5",
+      "prompt": "You leave the restaurant engaged to a joke that nobody can safely undo.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "date_6",
+      "prompt": "The date ends with a free tiramisu and a permanent block on every app.",
+      "ending": true,
+      "choices": []
+    }
+  ]
+}

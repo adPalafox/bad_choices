@@ -1,0 +1,57 @@
+{
+  "packId": "cursed-team-building",
+  "title": "Cursed Team-Building",
+  "theme": "Corporate bonding speedruns a preventable HR meeting.",
+  "startNodeId": "team_1",
+  "nodes": [
+    {
+      "id": "team_1",
+      "prompt": "Your manager says today's trust exercise will involve a fog machine and one live goose.",
+      "resultText": "The room chooses how publicly this offsite will fail.",
+      "choices": [
+        { "id": "team_1_a", "label": "Follow the goose", "nextNodeId": "team_2" },
+        { "id": "team_1_b", "label": "Pitch synergy deck", "nextNodeId": "team_3" },
+        { "id": "team_1_c", "label": "Hide in catering", "nextNodeId": "team_4" }
+      ]
+    },
+    {
+      "id": "team_2",
+      "prompt": "The goose leads everyone into the CEO's meditation pod.",
+      "resultText": "The room converts a bird incident into executive disruption.",
+      "choices": [
+        { "id": "team_2_a", "label": "Call it innovation", "nextNodeId": "team_5" },
+        { "id": "team_2_b", "label": "Elect the goose chair", "nextNodeId": "team_6" }
+      ]
+    },
+    {
+      "id": "team_3",
+      "prompt": "Your slide deck opens with a typo so bad that finance starts crying.",
+      "resultText": "The room decides whether to double down or weaponize confidence.",
+      "choices": [
+        { "id": "team_3_a", "label": "Present harder", "nextNodeId": "team_5" },
+        { "id": "team_3_b", "label": "Blame auto-correct", "nextNodeId": "team_6" }
+      ]
+    },
+    {
+      "id": "team_4",
+      "prompt": "Catering is only sparkling water and one suspicious sheet cake.",
+      "resultText": "The room chooses the exact flavor of morale collapse.",
+      "choices": [
+        { "id": "team_4_a", "label": "Launch cake committee", "nextNodeId": "team_5" },
+        { "id": "team_4_b", "label": "Expense the vibes", "nextNodeId": "team_6" }
+      ]
+    },
+    {
+      "id": "team_5",
+      "prompt": "HR describes the offsite as unforgettable for all the wrong legal reasons.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "team_6",
+      "prompt": "The goose is promoted ahead of the entire product org.",
+      "ending": true,
+      "choices": []
+    }
+  ]
+}
