@@ -36,15 +36,27 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    ```
 
-3. Create the Supabase schema by running [`supabase/schema.sql`](/Users/adreanpalafox/Developer/bad_choices/supabase/schema.sql) in the SQL editor.
+3. Link the repo to your Supabase project:
 
-4. Start the app:
+   ```bash
+   npx supabase link --project-ref your-project-ref
+   ```
+
+4. Push the tracked migration history:
+
+   ```bash
+   npx supabase db push
+   ```
+
+   The deployable schema source of truth is [`supabase/migrations/20260404215317_init_schema.sql`](/Users/adreanpalafox/Developer/bad_choices/supabase/migrations/20260404215317_init_schema.sql). [`supabase/schema.sql`](/Users/adreanpalafox/Developer/bad_choices/supabase/schema.sql) is kept as a reference copy.
+
+5. Start the app:
 
    ```bash
    npm run dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000)
+6. Open [http://localhost:3000](http://localhost:3000)
 
 ## Core flow
 
@@ -61,7 +73,8 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
 - [`components`](/Users/adreanpalafox/Developer/bad_choices/components): landing and room UI
 - [`content/packs`](/Users/adreanpalafox/Developer/bad_choices/content/packs): JSON scenario packs
 - [`lib`](/Users/adreanpalafox/Developer/bad_choices/lib): game logic, Supabase clients, shared types
-- [`supabase/schema.sql`](/Users/adreanpalafox/Developer/bad_choices/supabase/schema.sql): schema and realtime policies
+- [`supabase/migrations`](/Users/adreanpalafox/Developer/bad_choices/supabase/migrations): deployable database history for `supabase db push`
+- [`supabase/schema.sql`](/Users/adreanpalafox/Developer/bad_choices/supabase/schema.sql): reference copy of the current schema
 
 ## Adding scenario packs
 
@@ -95,6 +108,7 @@ Import the new pack in [`lib/content.ts`](/Users/adreanpalafox/Developer/bad_cho
 - All story packs are repo-managed content.
 - All writes go through server routes; clients only subscribe to realtime updates and read public state.
 - The current MVP keeps host authority minimal and uses deterministic tie-breaks by choice order.
+- Database changes should be added as new files under `supabase/migrations/`, then applied with `npx supabase db push`.
 
 ## Validation checklist
 
