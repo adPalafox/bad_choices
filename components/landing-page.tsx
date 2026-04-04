@@ -11,8 +11,11 @@ type LandingPageProps = {
   packs: ScenarioPack[];
 };
 
+type LandingMode = "join" | "create";
+
 export function LandingPage({ packs }: LandingPageProps) {
   const router = useRouter();
+  const [mode, setMode] = useState<LandingMode>("join");
   const [hostName, setHostName] = useState("");
   const [joinName, setJoinName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -24,6 +27,7 @@ export function LandingPage({ packs }: LandingPageProps) {
     event.preventDefault();
     setBusy("create");
     setError(null);
+    setMode("create");
 
     const sessionId = createSessionId();
     const response = await fetch("/api/rooms", {
@@ -59,6 +63,7 @@ export function LandingPage({ packs }: LandingPageProps) {
     event.preventDefault();
     setBusy("join");
     setError(null);
+    setMode("join");
 
     const normalizedCode = joinCode.trim().toUpperCase();
     const sessionId = createSessionId();
@@ -91,8 +96,8 @@ export function LandingPage({ packs }: LandingPageProps) {
   }
 
   return (
-    <main className="shell">
-      <section className="hero-card">
+    <main className="shell landing-shell">
+      <section className="hero-card landing-hero">
         <div className="eyebrow">Social chaos in under 10 minutes</div>
         <h1>Bad Choices</h1>
         <p className="hero-copy">
@@ -106,73 +111,110 @@ export function LandingPage({ packs }: LandingPageProps) {
         </div>
       </section>
 
-      <section className="grid-two">
-        <form className="panel" onSubmit={handleCreateRoom}>
-          <div className="section-tag">Host a room</div>
-          <h2>Start fast</h2>
-          <p>Pick a tone, name yourself, and get a room code you can drop into chat instantly.</p>
+      <section className="landing-actions">
+        <div className="landing-actions-copy">
+          <div className="section-tag">Start here</div>
+          <h2>Got a code? Jump in. Starting the chaos? Create a room.</h2>
+          <p>
+            Most players arrive to join a live room, so that path comes first. Hosting stays one tap away.
+          </p>
+        </div>
 
-          <label className="field">
-            <span>Your nickname</span>
-            <input
-              maxLength={24}
-              minLength={2}
-              placeholder="Captain Bad Idea"
-              required
-              value={hostName}
-              onChange={(event) => setHostName(event.target.value)}
-            />
-          </label>
-
-          <label className="field">
-            <span>Scenario pack</span>
-            <select value={packId} onChange={(event) => setPackId(event.target.value)}>
-              {packs.map((pack) => (
-                <option key={pack.packId} value={pack.packId}>
-                  {pack.title} · {pack.theme}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button className="button-primary" disabled={busy === "create"} type="submit">
-            {busy === "create" ? "Creating room..." : "Create room"}
+        <div className="landing-switch" role="tablist" aria-label="Landing mode">
+          <button
+            className={`landing-switch-button ${mode === "join" ? "active" : ""}`}
+            onClick={() => setMode("join")}
+            role="tab"
+            aria-selected={mode === "join"}
+            type="button"
+          >
+            Join
           </button>
-        </form>
-
-        <form className="panel" onSubmit={handleJoinRoom}>
-          <div className="section-tag">Join a room</div>
-          <h2>Use a code or invite link</h2>
-          <p>Zero login. Enter a nickname, paste the code, and jump straight into the vote.</p>
-
-          <label className="field">
-            <span>Room code</span>
-            <input
-              maxLength={4}
-              minLength={4}
-              placeholder="ABCD"
-              required
-              value={joinCode}
-              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-            />
-          </label>
-
-          <label className="field">
-            <span>Your nickname</span>
-            <input
-              maxLength={24}
-              minLength={2}
-              placeholder="Moral Liability"
-              required
-              value={joinName}
-              onChange={(event) => setJoinName(event.target.value)}
-            />
-          </label>
-
-          <button className="button-secondary" disabled={busy === "join"} type="submit">
-            {busy === "join" ? "Joining..." : "Join room"}
+          <button
+            className={`landing-switch-button ${mode === "create" ? "active" : ""}`}
+            onClick={() => setMode("create")}
+            role="tab"
+            aria-selected={mode === "create"}
+            type="button"
+          >
+            Create room
           </button>
-        </form>
+        </div>
+
+        <div className="landing-cards">
+          <form
+            className={`panel landing-card landing-card-join ${mode === "join" ? "focused" : "muted"}`}
+            onSubmit={handleJoinRoom}
+          >
+            <div className="section-tag">Join a room</div>
+            <h3>Use a code or invite link</h3>
+            <p>Zero login. Enter a nickname, paste the code, and jump straight into the vote.</p>
+
+            <label className="field">
+              <span>Room code</span>
+              <input
+                maxLength={4}
+                minLength={4}
+                placeholder="ABCD"
+                required
+                value={joinCode}
+                onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              />
+            </label>
+
+            <label className="field">
+              <span>Your nickname</span>
+              <input
+                maxLength={24}
+                minLength={2}
+                placeholder="Moral Liability"
+                required
+                value={joinName}
+                onChange={(event) => setJoinName(event.target.value)}
+              />
+            </label>
+
+            <button className="button-primary landing-cta" disabled={busy === "join"} type="submit">
+              {busy === "join" ? "Joining..." : "Join room"}
+            </button>
+          </form>
+
+          <form
+            className={`panel landing-card landing-card-create ${mode === "create" ? "focused" : "muted"}`}
+            onSubmit={handleCreateRoom}
+          >
+            <div className="section-tag">Host a room</div>
+            <h3>Start fast</h3>
+            <p>Pick a tone, name yourself, and get a room code you can drop into chat instantly.</p>
+
+            <label className="field">
+              <span>Your nickname</span>
+              <input
+                maxLength={24}
+                minLength={2}
+                placeholder="Captain Bad Idea"
+                required
+                value={hostName}
+                onChange={(event) => setHostName(event.target.value)}
+              />
+            </label>
+
+            <label className="field">
+              <span>Scenario pack</span>
+              <select value={packId} onChange={(event) => setPackId(event.target.value)}>
+                {packs.map((pack) => (
+                  <option key={pack.packId} value={pack.packId}>
+                    {pack.title} · {pack.theme}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button className="button-ghost" disabled={busy === "create"} type="submit">
+              {busy === "create" ? "Creating room..." : "Create room"}
+            </button>
+          </form>
+        </div>
       </section>
 
       {error ? <p className="error-banner">{error}</p> : null}

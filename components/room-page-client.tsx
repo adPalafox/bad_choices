@@ -22,6 +22,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
   const [session, setSession] = useState<RoomSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [presenceReady, setPresenceReady] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [showRoomPanel, setShowRoomPanel] = useState(false);
   const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
@@ -55,7 +56,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
 
   const syncPresence = useCallback(
     async (nextConnected: boolean, activeSession: RoomSession) => {
-      await fetch(`/api/rooms/${code}/presence`, {
+      const response = await fetch(`/api/rooms/${code}/presence`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -67,12 +68,18 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
         }),
         keepalive: !nextConnected
       });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Failed to sync presence.");
+      }
     },
     [code]
   );
 
   useEffect(() => {
     setSession(readRoomSession(code));
+    setPresenceReady(false);
     refreshState();
   }, [code, refreshState]);
 
@@ -144,10 +151,20 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
 
   useEffect(() => {
     if (!session) {
+      setPresenceReady(true);
       return;
     }
 
-    void syncPresence(true, session).then(refreshState).catch(() => undefined);
+    let cancelled = false;
+
+    void syncPresence(true, session)
+      .then(refreshState)
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setPresenceReady(true);
+        }
+      });
 
     const markDisconnected = () => {
       const payload = JSON.stringify({
@@ -175,6 +192,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     window.addEventListener("beforeunload", markDisconnected);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("pagehide", markDisconnected);
       window.removeEventListener("beforeunload", markDisconnected);
     };
@@ -338,6 +356,8 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     return <main className="room-shell error-banner">{error ?? "Room not found."}</main>;
   }
 
+  const waitingForPresenceRestore = Boolean(session && !me && !presenceReady);
+
   return (
     <main className={`room-shell ${isLobby ? "mode-lobby" : "mode-game"}`}>
       {isLobby ? (
@@ -370,7 +390,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
             <div className="section-tag">Live game</div>
             <div className="compact-title-row">
               <button className="button-ghost" onClick={() => setShowRoomPanel((current) => !current)} type="button">
-                {showRoomPanel ? "Hide room" : "Show room"}
+                {showRoomPanel ? "Hide room details" : "Show room details"}
               </button>
             </div>
           </div>
@@ -382,7 +402,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
         </section>
       )}
 
-      {!me ? (
+      {!me && !waitingForPresenceRestore ? (
         <section className={`join-shell ${isLobby ? "join-lobby" : "join-inline"}`}>
           <div className="panel">
             <div className="section-tag">Join this room</div>
@@ -422,7 +442,19 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
         </section>
       ) : null}
 
-      <section className={`room-layout ${isLobby ? "lobby-layout" : "game-layout"}`}>
+      {waitingForPresenceRestore ? (
+        <section className="join-shell join-inline">
+          <div className="panel">
+            <div className="section-tag">Reconnecting</div>
+            <h2>Restoring your seat in the room</h2>
+            <p>We found a saved room session and are reconnecting you now.</p>
+          </div>
+        </section>
+      ) : null}
+
+      <section
+        className={`room-layout ${isLobby ? "lobby-layout" : "game-layout"} ${showRoomPanel ? "with-room-panel" : "without-room-panel"}`}
+      >
         <div className="stage-column">
           <section className="panel stage-panel">
             {isLobby ? (
@@ -517,6 +549,11 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
                 <p className="result-card">
                   Final recap from {state.events.length} decisions. The room can rematch immediately or switch packs.
                 </p>
+                {me?.is_host ? (
+                  <button className="button-primary" onClick={() => postToRoom("/rematch")} type="button">
+                    Rematch this pack
+                  </button>
+                ) : null}
                 <div className="recap-grid">
                   <article className="recap-card">
                     <span>Path taken</span>
@@ -566,12 +603,6 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
                 </li>
               ))}
             </ul>
-
-            {state.room.phase === "ended" && me?.is_host ? (
-              <button className="button-secondary" onClick={() => postToRoom("/rematch")} type="button">
-                Rematch this pack
-              </button>
-            ) : null}
 
             <div className="room-side-meta">
               <span>{playerCount} players live</span>

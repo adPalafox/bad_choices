@@ -102,10 +102,12 @@ button {
 .room-side-meta span {
   display: inline-flex;
   align-items: center;
-  padding: 10px 14px;
+  padding: 9px 13px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .grid-two {
@@ -203,19 +205,21 @@ button {
 }
 
 .button-ghost {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text);
-  border-color: var(--border);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 18px rgba(6, 8, 20, 0.18);
 }
 
 .button-ghost:hover,
 .button-ghost:focus-visible {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .button-ghost:active {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .button-primary:disabled,
@@ -334,6 +338,10 @@ button {
 .game-layout {
   grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.8fr);
   align-items: start;
+}
+
+.room-layout.without-room-panel {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .stage-column {
@@ -475,6 +483,10 @@ button {
 }
 
 .room-panel {
+  display: none;
+}
+
+.room-panel.open {
   display: block;
 }
 
@@ -499,6 +511,136 @@ button {
   color: var(--muted);
 }
 
+.landing-shell {
+  padding-top: 18px;
+}
+
+.landing-hero {
+  margin-bottom: 18px;
+}
+
+.landing-actions {
+  display: grid;
+  gap: 18px;
+}
+
+.landing-actions-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+}
+
+.landing-actions-copy h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.landing-switch {
+  display: none;
+  width: fit-content;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  gap: 6px;
+}
+
+.landing-switch-button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.landing-switch-button:hover,
+.landing-switch-button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.landing-switch-button:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.landing-switch-button.active {
+  background: rgba(129, 244, 215, 0.12);
+  border-color: rgba(129, 244, 215, 0.38);
+  color: var(--mint-strong);
+  box-shadow: 0 0 0 1px rgba(129, 244, 215, 0.14);
+}
+
+.landing-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.9fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.landing-card {
+  display: grid;
+  gap: 6px;
+  min-height: 100%;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.landing-card h3 {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.landing-card.focused {
+  border-color: rgba(255, 203, 105, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(17, 21, 46, 0.82));
+}
+
+.landing-card.muted {
+  background: rgba(17, 21, 46, 0.74);
+}
+
+.landing-card-join.focused {
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(255, 203, 105, 0.12);
+}
+
+.landing-card-create.focused {
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(129, 244, 215, 0.12);
+}
+
+.landing-cta {
+  margin-top: 8px;
+}
+
+.hero-stats span,
+.room-meta span,
+.footnote-row span,
+.timer-chip,
+.room-side-meta span {
+  cursor: default;
+  user-select: none;
+}
+
+.timer-chip {
+  font-weight: 600;
+}
+
 @media (max-width: 960px) {
   .share-utility,
   .compact-header,
@@ -513,12 +655,20 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .room-panel {
+  .landing-switch {
+    display: inline-flex;
+  }
+
+  .landing-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-card {
     display: none;
   }
 
-  .room-panel.open {
-    display: block;
+  .landing-card.focused {
+    display: grid;
   }
 }
 
