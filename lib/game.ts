@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { getScenarioNode, getScenarioPack } from "@/lib/content";
 import type {
   Choice,
@@ -11,14 +9,18 @@ import type {
 } from "@/lib/types";
 
 export const MAX_PLAYERS = 8;
-export const MIN_PLAYERS = 3;
+export const MIN_PLAYERS = 1;
 export const VOTE_DURATION_SECONDS = 15;
 export const REVEAL_DURATION_SECONDS = 5;
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export function createSessionId() {
-  return randomUUID();
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function createRoomCode() {

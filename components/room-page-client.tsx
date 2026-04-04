@@ -2,7 +2,7 @@
 
 import { startTransition, useCallback, useEffect, useState } from "react";
 
-import { MIN_PLAYERS, REVEAL_DURATION_SECONDS, VOTE_DURATION_SECONDS } from "@/lib/game";
+import { createSessionId, MIN_PLAYERS, REVEAL_DURATION_SECONDS, VOTE_DURATION_SECONDS } from "@/lib/game";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import { readRoomSession, writeRoomSession } from "@/lib/room-session";
 import type { ApiRoomState, RoomSession } from "@/lib/types";
@@ -143,7 +143,7 @@ export function RoomPageClient({ code }: RoomPageClientProps) {
     }));
 
     try {
-      const sessionId = crypto.randomUUID();
+      const sessionId = createSessionId();
       const response = await fetch(`/api/rooms/${code}/join`, {
         method: "POST",
         headers: {
