@@ -562,6 +562,141 @@ button {
   border: 1px solid var(--border);
 }
 
+.share-damage {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.share-damage-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.share-damage-header h3 {
+  margin: 8px 0 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.share-damage-header p {
+  max-width: 42ch;
+  margin: 0;
+}
+
+.share-artifact-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.artifact-card {
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(129, 244, 215, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(255, 203, 105, 0.2), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(129, 244, 215, 0.18), transparent 34%),
+    linear-gradient(155deg, rgba(18, 23, 51, 0.96), rgba(11, 15, 34, 0.98));
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 18px;
+}
+
+.artifact-actions {
+  display: grid;
+  gap: 14px;
+}
+
+.artifact-actions p {
+  margin: 0;
+  max-width: 48ch;
+}
+
+.artifact-social-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.artifact-platform-button {
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+
+.artifact-card-topline,
+.artifact-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.artifact-card-topline span,
+.artifact-stat-row span {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  font-size: 0.83rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.artifact-card-subhead {
+  margin: 0;
+  color: var(--warm);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+}
+
+.artifact-card-caption {
+  margin: -6px 0 0;
+  max-width: 46ch;
+  color: rgba(247, 243, 233, 0.86);
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.artifact-card-headline {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  max-width: 12ch;
+}
+
+.artifact-path-block {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.artifact-path-block span {
+  color: var(--warm);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.76rem;
+}
+
+.artifact-path-block strong {
+  font-size: 1.08rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
 .vote-bar-group,
 .recap-grid,
 .timeline {
@@ -787,7 +922,8 @@ button {
   .share-utility,
   .compact-header,
   .stage-header,
-  .compact-title-row {
+  .compact-title-row,
+  .share-damage-header {
     flex-direction: column;
   }
 
@@ -853,7 +989,51 @@ button {
     border-radius: 20px;
   }
 
+  .artifact-card {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .artifact-social-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .payoff-headline {
     font-size: clamp(2rem, 10vw, 3rem);
+  }
+
+  .artifact-card-headline {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  .artifact-card-caption {
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .artifact-card {
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .artifact-card-topline,
+  .artifact-stat-row {
+    gap: 8px;
+  }
+
+  .artifact-card-topline span,
+  .artifact-stat-row span {
+    max-width: 100%;
+    font-size: 0.76rem;
+  }
+
+  .artifact-path-block {
+    padding: 14px;
+  }
+
+  .artifact-path-block strong {
+    font-size: 1rem;
+    line-height: 1.4;
   }
 }

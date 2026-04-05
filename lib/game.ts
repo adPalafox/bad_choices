@@ -1,5 +1,6 @@
 import { getScenarioNode, getScenarioPack } from "@/lib/content";
 import type {
+  ApiRoomState,
   Choice,
   GameEventRecord,
   GamePhase,
@@ -190,5 +191,55 @@ export function getPackSummary(packId: string) {
     theme: pack.theme,
     startNodeId: pack.startNodeId,
     nodeCount: pack.nodes.length
+  };
+}
+
+export type PostGameArtifact = {
+  headline: string;
+  subhead: string;
+  caption: string;
+  path: string;
+  chaosMoments: number;
+  shareMessage: string;
+};
+
+function truncateSegment(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function buildChaosLine(chaosMoments: number) {
+  if (chaosMoments === 0) {
+    return "Shockingly, the room made every call without a chaos intervention.";
+  }
+
+  if (chaosMoments === 1) {
+    return "Chaos had to step in once because the room couldn't hold itself together.";
+  }
+
+  return `Chaos had to intervene ${chaosMoments} times because the room kept fumbling the assignment.`;
+}
+
+export function buildPostGameArtifact(state: ApiRoomState): PostGameArtifact {
+  const rounds = state.events.length;
+  const players = state.players.length;
+  const pathSegments = state.events.map((event) => truncateSegment(event.selected_choice_label, 30));
+  const path = pathSegments.join(" -> ");
+  const chaosMoments = state.events.filter((event) => event.resolution_type !== "majority").length;
+  const headline = truncateSegment(state.currentNode?.prompt ?? "The room survived, technically.", 96);
+  const caption = buildChaosLine(chaosMoments);
+  const subhead = `${state.pack.title} | ${players} players | ${rounds} decisions`;
+  const shareMessage = `We just imploded our way through "${state.pack.title}" in Bad Choices. ${headline}`;
+
+  return {
+    headline,
+    subhead,
+    caption,
+    path,
+    chaosMoments,
+    shareMessage
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -11,10 +11,17 @@ import {
   EyeOffIcon,
   LinkIcon,
   RotateIcon,
+  ShareIcon,
   SparklesIcon,
   UsersIcon
 } from "@/components/ui-icons";
-import { createSessionId, REVEAL_DURATION_SECONDS, START_MIN_PLAYERS, VOTE_DURATION_SECONDS } from "@/lib/game";
+import {
+  buildPostGameArtifact,
+  createSessionId,
+  REVEAL_DURATION_SECONDS,
+  START_MIN_PLAYERS,
+  VOTE_DURATION_SECONDS
+} from "@/lib/game";
 import { readRoomSession, readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import type { ApiRoomState, Choice, ResolutionType, RoomSession, ScenarioPack } from "@/lib/types";
@@ -44,6 +51,7 @@ function getRevealKicker(resolutionType: ResolutionType) {
 
 export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const router = useRouter();
+  const artifactCardRef = useRef<HTMLElement | null>(null);
   const [state, setState] = useState<ApiRoomState | null>(null);
   const [session, setSession] = useState<RoomSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +64,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const [pendingAction, setPendingAction] = useState<"start" | "rematch" | null>(null);
   const [showPackPicker, setShowPackPicker] = useState(false);
   const [nextPackId, setNextPackId] = useState("");
+  const [sharingArtifact, setSharingArtifact] = useState(false);
   const [joinState, setJoinState] = useState<JoinState>({
     nickname: "",
     busy: false,
@@ -288,6 +297,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const isLobby = state?.room.phase === "lobby";
   const inviteUrl =
     typeof window === "undefined" || !state ? "" : `${window.location.origin}/room/${state.room.code}`;
+  const siteUrl = typeof window === "undefined" ? "" : window.location.origin;
   const currentNode = state?.currentNode ?? null;
   const currentChoices = useMemo(() => currentNode?.choices ?? [], [currentNode]);
   const totalVotes =
@@ -312,9 +322,33 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const hasVoted = Boolean(
     me && currentNode && state?.votes.some((vote) => vote.player_id === me.id && vote.node_id === currentNode.id)
   ) || Boolean(pendingChoiceId);
+  const showLiveVoteCounts = Boolean(me?.is_host && state?.room.phase === "voting");
 
   const visibleVoteSnapshot =
     state?.room.phase === "reveal" || state?.room.phase === "ended" ? state.lastEvent?.vote_snapshot ?? null : null;
+  const postGameArtifact = useMemo(
+    () => (state?.room.phase === "ended" ? buildPostGameArtifact(state) : null),
+    [state]
+  );
+  const socialShareTargets = useMemo(() => {
+    if (!postGameArtifact || !siteUrl) {
+      return [];
+    }
+
+    const fullMessage = `${postGameArtifact.shareMessage} Try it now: ${siteUrl}`;
+    const encodedUrl = encodeURIComponent(siteUrl);
+    const encodedMessage = encodeURIComponent(postGameArtifact.shareMessage);
+    const encodedFullMessage = encodeURIComponent(fullMessage);
+
+    return [
+      { label: "Messenger", href: `fb-messenger://share/?link=${encodedUrl}` },
+      { label: "WhatsApp", href: `https://wa.me/?text=${encodedFullMessage}` },
+      { label: "Telegram", href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedMessage}` },
+      { label: "X", href: `https://twitter.com/intent/tweet?text=${encodedMessage}&url=${encodedUrl}` },
+      { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedMessage}` },
+      { label: "Reddit", href: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedMessage}` }
+    ];
+  }, [postGameArtifact, siteUrl]);
 
   const secondsRemaining = state?.room.phase_deadline
     ? Math.max(0, Math.ceil((new Date(state.room.phase_deadline).getTime() - now) / 1000))
@@ -437,6 +471,115 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       setCopiedField(field);
     } catch {
       setError(`Failed to copy ${field}.`);
+    }
+  }
+
+  function inlineComputedStyles(source: HTMLElement, target: HTMLElement) {
+    const computed = window.getComputedStyle(source);
+
+    for (const property of computed) {
+      target.style.setProperty(
+        property,
+        computed.getPropertyValue(property),
+        computed.getPropertyPriority(property)
+      );
+    }
+
+    target.style.setProperty("margin", computed.margin);
+  }
+
+  function cloneNodeWithInlineStyles(source: HTMLElement) {
+    const clone = source.cloneNode(true) as HTMLElement;
+    const sourceNodes = [source, ...Array.from(source.querySelectorAll<HTMLElement>("*"))];
+    const cloneNodes = [clone, ...Array.from(clone.querySelectorAll<HTMLElement>("*"))];
+
+    sourceNodes.forEach((node, index) => {
+      const cloneNode = cloneNodes[index];
+
+      if (cloneNode) {
+        inlineComputedStyles(node, cloneNode);
+      }
+    });
+
+    return clone;
+  }
+
+  function createArtifactImageBlob() {
+    const source = artifactCardRef.current;
+
+    if (!source) {
+      throw new Error("Missing artifact card.");
+    }
+
+    const rect = source.getBoundingClientRect();
+    const width = Math.ceil(rect.width);
+    const height = Math.ceil(rect.height);
+    const clone = cloneNodeWithInlineStyles(source);
+    clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+
+    const serialized = new XMLSerializer().serializeToString(clone);
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+        <foreignObject width="100%" height="100%">${serialized}</foreignObject>
+      </svg>
+    `;
+    return new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  }
+
+  function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function shareArtifact() {
+    if (!state || !postGameArtifact) {
+      return;
+    }
+
+    const shareText = `We just torched "${state.pack.title}" in Bad Choices. Try it now: ${siteUrl}`;
+
+    setSharingArtifact(true);
+    setError(null);
+
+    try {
+      const blob = await createArtifactImageBlob();
+      const file = new File([blob], `bad-choices-${state.room.code.toLowerCase()}-recap.svg`, {
+        type: "image/svg+xml"
+      });
+
+      if (typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `${state.pack.title} recap`,
+          text: shareText,
+          url: siteUrl,
+          files: [file]
+        });
+        return;
+      }
+
+      if (typeof navigator.share === "function") {
+        downloadBlob(blob, file.name);
+        await navigator.share({
+          title: `${state.pack.title} recap`,
+          text: shareText,
+          url: siteUrl
+        });
+        return;
+      }
+
+      downloadBlob(blob, file.name);
+      await navigator.clipboard.writeText(shareText);
+      setCopiedField("link");
+    } catch (shareError) {
+      if (!(shareError instanceof DOMException && shareError.name === "AbortError")) {
+        setError(shareError instanceof Error ? shareError.message : "Failed to share artifact.");
+      }
+    } finally {
+      setSharingArtifact(false);
     }
   }
 
@@ -649,17 +792,25 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         type="button"
                       >
                         <span className="choice-copy">{choice.label}</span>
-                        <span className="choice-meta">
-                          <strong>{liveCount}</strong>
-                          <small>{selected ? "You" : "votes"}</small>
-                        </span>
+                        {showLiveVoteCounts ? (
+                          <span className="choice-meta">
+                            <strong>{liveCount}</strong>
+                            <small>{selected ? "You" : "votes"}</small>
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
                 </div>
 
                 <p className="helper-text">
-                  {hasVoted ? "Vote locked. Live counts update while the rest of the room decides." : "Pick one fast. No speeches."}
+                  {hasVoted
+                    ? showLiveVoteCounts
+                      ? "Vote locked. Live counts stay visible for the host while the room decides."
+                      : "Vote locked. Results stay hidden until the choice resolves."
+                    : showLiveVoteCounts
+                      ? "Pick one fast. Host can monitor the count, nobody else can."
+                      : "Pick one fast. Results stay hidden until the choice resolves."}
                 </p>
               </>
             ) : null}
@@ -699,14 +850,62 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
 
             {state.room.phase === "ended" ? (
               <>
-                <div className="section-tag">Ending</div>
-                <section className="payoff-card payoff-card-ending">
-                  <p className="payoff-kicker">Final chaos unlocked</p>
-                  <h2 className="payoff-headline">{state.currentNode?.prompt ?? "The room survived, technically."}</h2>
-                  <p className="payoff-body">
-                    Final recap from {state.events.length} decisions. The room can rematch immediately or switch packs.
-                  </p>
-                </section>
+                {postGameArtifact ? (
+                  <section className="share-damage">
+                    <div className="share-damage-header">
+                      <div>
+                        <div className="section-tag">Post-game artifact</div>
+                        <h2>Share the damage.</h2>
+                      </div>
+                      <p>The match is over. The artifact is the thing worth posting.</p>
+                    </div>
+
+                    <div className="share-artifact-grid">
+                      <article className="artifact-card" aria-label="Post-game recap card" ref={artifactCardRef}>
+                        <div className="artifact-card-topline">
+                          <span>{state.pack.title}</span>
+                          <span>Room {state.room.code}</span>
+                        </div>
+                        <p className="artifact-card-subhead">{postGameArtifact.subhead}</p>
+                        <h3 className="artifact-card-headline">{postGameArtifact.headline}</h3>
+                        <p className="artifact-card-caption">{postGameArtifact.caption}</p>
+                        <div className="artifact-path-block">
+                          <span>Decision trail</span>
+                          <strong>{postGameArtifact.path}</strong>
+                        </div>
+                        <div className="artifact-stat-row">
+                          <span>{playerCount} players</span>
+                          <span>{state.events.length} rounds</span>
+                          <span>{postGameArtifact.chaosMoments} chaos events</span>
+                        </div>
+                      </article>
+                      <div className="artifact-actions">
+                        <button className="button-secondary" disabled={sharingArtifact} onClick={() => void shareArtifact()} type="button">
+                          <span className="button-content">
+                            <ShareIcon className="button-icon" />
+                            <span>{sharingArtifact ? "Preparing share..." : "Share artifact"}</span>
+                          </span>
+                        </button>
+                        <p>
+                          Shares the recap card as an image with a message and a link back to the site so the next group can try it.
+                        </p>
+                        <div className="artifact-social-grid">
+                          {socialShareTargets.map((target) => (
+                            <a
+                              className="button-ghost artifact-platform-button"
+                              href={target.href}
+                              key={target.label}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {target.label}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
                 {me?.is_host ? (
                   <>
                     <div className="ending-actions">

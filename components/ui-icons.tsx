@@ -37,6 +37,18 @@ export function CopyIcon({ className }: IconProps) {
   );
 }
 
+export function ShareIcon({ className }: IconProps) {
+  return (
+    <IconFrame className={className}>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.5 10.8 6.9-4.1" />
+      <path d="m8.5 13.2 6.9 4.1" />
+    </IconFrame>
+  );
+}
+
 export function UsersIcon({ className }: IconProps) {
   return (
     <IconFrame className={className}>
