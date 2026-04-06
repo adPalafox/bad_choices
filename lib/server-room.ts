@@ -1,4 +1,4 @@
-import { getScenarioNode, getScenarioPack } from "@/lib/content";
+import { getScenarioPack } from "@/lib/content";
 import {
   canAdvanceRevealPhase,
   canResolveVotingPhase,
@@ -11,6 +11,7 @@ import {
   REVEAL_DURATION_SECONDS,
   VOTE_DURATION_SECONDS
 } from "@/lib/game";
+import { resolveScenarioNode } from "@/lib/scenario-engine";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import type {
   ApiRoomState,
@@ -82,8 +83,8 @@ export async function getRoomState(code: string): Promise<ApiRoomState> {
     players: publicPlayers,
     votes: votes ?? [],
     events: events ?? [],
-    currentNode: getScenarioNode(room.scenario_pack, room.current_node_id),
-    pendingNode: getScenarioNode(room.scenario_pack, room.pending_node_id),
+    currentNode: resolveScenarioNode(getScenarioPack(room.scenario_pack), room.current_node_id, events ?? []),
+    pendingNode: resolveScenarioNode(getScenarioPack(room.scenario_pack), room.pending_node_id, events ?? []),
     lastEvent: events?.at(-1) ?? null
   };
 }
@@ -392,7 +393,7 @@ export async function resolveRoom(code: string) {
       return;
     }
 
-    const insert = createGameEventInsert(state.room, state.votes);
+    const insert = createGameEventInsert(state.room, state.votes, state.events);
 
     const [{ error: eventError }, { error: roomError }] = await Promise.all([
       supabase.from("game_events").upsert(insert, { onConflict: "room_id,round" }),

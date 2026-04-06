@@ -867,11 +867,26 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                           <span>Room {state.room.code}</span>
                         </div>
                         <p className="artifact-card-subhead">{postGameArtifact.subhead}</p>
-                        <h3 className="artifact-card-headline">{postGameArtifact.headline}</h3>
+                        <h3
+                          className={`artifact-card-headline ${postGameArtifact.headline.length > 110 ? "is-long" : ""} ${postGameArtifact.headline.length > 160 ? "is-xlong" : ""}`}
+                        >
+                          {postGameArtifact.headline}
+                        </h3>
                         <p className="artifact-card-caption">{postGameArtifact.caption}</p>
                         <div className="artifact-path-block">
                           <span>Decision trail</span>
-                          <strong>{postGameArtifact.path}</strong>
+                          <div
+                            className={`artifact-path-steps ${postGameArtifact.path.length > 150 ? "is-long" : ""}`}
+                          >
+                            {postGameArtifact.pathSteps.map((step, index) => (
+                              <span className="artifact-path-step" key={`${step}-${index}`}>
+                                <strong>{step}</strong>
+                                {index < postGameArtifact.pathSteps.length - 1 ? (
+                                  <em aria-hidden="true">→</em>
+                                ) : null}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                         <div className="artifact-stat-row">
                           <span>{playerCount} players</span>
@@ -969,15 +984,22 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   </>
                 ) : null}
                 <div className="recap-grid">
-                  <article className="recap-card">
+                  <article className="recap-card recap-card-path">
                     <span>Path taken</span>
-                    <strong>{state.events.map((event) => event.selected_choice_label).join(" → ")}</strong>
+                    <div className="recap-path-steps">
+                      {state.events.map((event, index) => (
+                        <span className="recap-path-step" key={event.id}>
+                          <strong>{event.selected_choice_label}</strong>
+                          {index < state.events.length - 1 ? <em aria-hidden="true">→</em> : null}
+                        </span>
+                      ))}
+                    </div>
                   </article>
-                  <article className="recap-card">
+                  <article className="recap-card recap-card-stat">
                     <span>Participation</span>
                     <strong>{playerCount} players made it to the end</strong>
                   </article>
-                  <article className="recap-card">
+                  <article className="recap-card recap-card-stat">
                     <span>Rounds completed</span>
                     <strong>{state.events.length}</strong>
                   </article>
