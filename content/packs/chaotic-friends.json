@@ -14,42 +14,54 @@
       "id": "friends_1",
       "kind": "core",
       "prompt": "Your group finds an unattended karaoke machine outside a convenience store.",
-      "resultText": "The room picks the exact level of public embarrassment it deserves.",
+      "resultText": "{{spotlight}} gets pushed to the center of the mess and the room picks the exact level of public embarrassment to pin on them.",
+      "socialPrompt": {
+        "key": "spotlight_nomination",
+        "prompt": "Who in this room would make this karaoke situation worse?",
+        "voteIntro": "The room picked {{spotlight}}. Decide how to weaponize that.",
+        "receiptTemplate": "{{count}} players said {{spotlight}} would turn this into a public liability."
+      },
       "choices": [
-        { "id": "friends_1_a", "label": "Steal the mic", "nextNodeId": "friends_2", "resultText": "The room lunges for instant karaoke authority and turns a sidewalk into a stage." },
-        { "id": "friends_1_b", "label": "Sell tickets", "nextNodeId": "friends_3", "resultText": "Somebody appoints themselves finance and starts charging strangers for the chaos." },
-        { "id": "friends_1_c", "label": "Pretend it's art", "nextNodeId": "friends_4", "resultText": "Confidence wins. The group rebrands trespassing as an immersive installation." }
+        { "id": "friends_1_a", "label": "Make {{spotlight}} steal the mic", "nextNodeId": "friends_2", "resultText": "{{spotlight}} lunges for instant karaoke authority and turns a sidewalk into a stage." },
+        { "id": "friends_1_b", "label": "Make {{spotlight}} sell tickets", "nextNodeId": "friends_3", "resultText": "{{spotlight}} appoints themselves finance and starts charging strangers for the chaos." },
+        { "id": "friends_1_c", "label": "Make {{spotlight}} pretend it's art", "nextNodeId": "friends_4", "resultText": "{{spotlight}} rebrands trespassing as an immersive installation with dangerous confidence." }
       ]
     },
     {
       "id": "friends_2",
       "kind": "core",
-      "prompt": "Three strangers demand to hear your best breakup anthem right now.",
-      "resultText": "The room escalates from cringe to commitment instantly.",
+      "prompt": "Three strangers demand that {{spotlight}} deliver the group's best breakup anthem right now.",
+      "resultText": "The room escalates from cringe to commitment and leaves {{spotlight}} holding the mic.",
       "choices": [
-        { "id": "friends_2_a", "label": "Scream-sing with conviction", "nextNodeId": "friends_5", "resultText": "The anthem becomes a public emergency and somehow boosts attendance.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] },
-        { "id": "friends_2_b", "label": "Turn it into a crowd singalong", "nextNodeId": "friends_6", "resultText": "The room hands strangers the chorus and accidentally discovers momentum.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] }
+        { "id": "friends_2_a", "label": "Tell {{spotlight}} to scream-sing with conviction", "nextNodeId": "friends_5", "resultText": "{{spotlight}} turns the anthem into a public emergency and somehow boosts attendance.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] },
+        { "id": "friends_2_b", "label": "Make {{spotlight}} turn it into a crowd singalong", "nextNodeId": "friends_6", "resultText": "{{spotlight}} hands strangers the chorus and accidentally discovers momentum.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] }
       ]
     },
     {
       "id": "friends_3",
       "kind": "core",
-      "prompt": "Someone actually pays and asks if this is a legal event.",
-      "resultText": "The room chooses whether to lie with confidence or monetize the panic.",
+      "prompt": "Someone actually pays and asks {{spotlight}} if this is a legal event.",
+      "resultText": "The room decides whether {{spotlight}} should lie with confidence or monetize the panic.",
+      "roundTemplate": {
+        "id": "prediction",
+        "privatePrompt": "Who in this room should handle this because they'd sell the lie best?",
+        "voteIntro": "The room thinks {{spotlight}} can carry this. Decide how they try it.",
+        "receiptTemplate": "{{count}} players privately said {{spotlight}} could bluff this room."
+      },
       "choices": [
-        { "id": "friends_3_a", "label": "Say yes confidently", "nextNodeId": "friends_7", "resultText": "A fake permit vibe settles over the crowd and nobody challenges it fast enough.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] },
-        { "id": "friends_3_b", "label": "Open a merch tab immediately", "nextNodeId": "friends_8", "resultText": "The room pivots from event planning to reckless retail in under ten seconds.", "effects": [{ "type": "add_modifier", "modifierId": "cashflow" }] }
+        { "id": "friends_3_a", "label": "Have {{spotlight}} say yes confidently", "nextNodeId": "friends_7", "resultText": "{{spotlight}} sells a fake permit vibe before anyone can challenge it.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] },
+        { "id": "friends_3_b", "label": "Have {{spotlight}} open a merch tab immediately", "nextNodeId": "friends_8", "resultText": "{{spotlight}} pivots from event planning to reckless retail in under ten seconds.", "effects": [{ "type": "add_modifier", "modifierId": "cashflow" }] }
       ]
     },
     {
       "id": "friends_4",
       "kind": "core",
-      "prompt": "A local influencer starts filming your performance installation.",
-      "resultText": "The room picks the flavor of viral regret.",
+      "prompt": "A local influencer starts filming while {{spotlight}} tries to defend your performance installation.",
+      "resultText": "The room picks the flavor of viral regret and leaves {{spotlight}} on camera.",
       "audienceInterventionNodeIds": ["friends_15"],
       "choices": [
-        { "id": "friends_4_a", "label": "Lean into the bit", "nextNodeId": "friends_9", "resultText": "The clip turns your mess into a movement before anyone can stop it.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] },
-        { "id": "friends_4_b", "label": "Demand sponsorship on camera", "nextNodeId": "friends_10", "resultText": "The room sees a ring light and immediately starts negotiating like a failing startup.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] }
+        { "id": "friends_4_a", "label": "Make {{spotlight}} lean into the bit", "nextNodeId": "friends_9", "resultText": "{{spotlight}} turns the clip into a movement before anyone can stop it.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] },
+        { "id": "friends_4_b", "label": "Make {{spotlight}} demand sponsorship on camera", "nextNodeId": "friends_10", "resultText": "{{spotlight}} sees a ring light and starts negotiating like a failing startup.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] }
       ]
     },
     {
@@ -94,6 +106,13 @@
       "kind": "core",
       "prompt": "The merch table is suddenly out-earning the actual music.",
       "resultText": "The room must decide whether this is a brand pivot or a tax crime.",
+      "roundTemplate": {
+        "id": "confession",
+        "privatePrompt": "Privately, what would you actually do with this momentum?",
+        "voteIntro": "Privately, the room leaned {{option}}. Now decide what the whole group commits to.",
+        "receiptTemplate": "{{count}} players privately chose {{option}} before the room locked in a public move.",
+        "distributionIntro": "{{count}} private votes landed on {{option}} before the room had to act."
+      },
       "choices": [
         { "id": "friends_8_a", "label": "Launch VIP lanyards", "nextNodeId": "friends_13", "resultText": "The room monetizes nothing with startling professionalism.", "effects": [{ "type": "add_modifier", "modifierId": "cashflow" }] },
         { "id": "friends_8_b", "label": "Offer equity to strangers", "nextNodeId": "friends_14", "resultText": "The room invents a cap table in a parking lot and hopes nobody asks follow-up questions.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] }
@@ -128,6 +147,10 @@
         { "text": "The rooftop set is trending hard enough that strangers are climbing fire escapes just to say they were there.", "gate": { "requiredModifiers": ["viral"] } }
       ],
       "resultText": "The room chooses between legacy and immediate legal consequences.",
+      "roundTemplate": {
+        "id": "scapegoat",
+        "betrayalEligible": true
+      },
       "choices": [
         { "id": "friends_11_a", "label": "Play until sunrise", "nextNodeId": "friends_18", "resultText": "The room commits to myth-making with zero exit strategy." },
         { "id": "friends_11_b", "label": "Declare a residency", "nextNodeId": "friends_19", "resultText": "You accidentally create a recurring obligation that city officials can now document.", "gate": { "requiredModifiers": ["official"] } }
