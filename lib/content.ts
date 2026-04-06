@@ -1,6 +1,7 @@
 import chaoticFriends from "@/content/packs/chaotic-friends.json";
 import cursedTeamBuilding from "@/content/packs/cursed-team-building.json";
 import dateNightDisaster from "@/content/packs/date-night-disaster.json";
+import { validateScenarioPack } from "@/lib/scenario-engine";
 import type { ScenarioNode, ScenarioPack } from "@/lib/types";
 
 const packs = [
@@ -8,6 +9,10 @@ const packs = [
   dateNightDisaster,
   cursedTeamBuilding
 ] as ScenarioPack[];
+
+for (const pack of packs) {
+  validateScenarioPack(pack);
+}
 
 export function getScenarioPacks(): ScenarioPack[] {
   return packs;

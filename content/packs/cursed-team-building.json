@@ -3,53 +3,229 @@
   "title": "Cursed Team-Building",
   "theme": "Corporate bonding speedruns a preventable HR meeting.",
   "startNodeId": "team_1",
+  "modifiers": [
+    { "id": "executive_cover", "label": "Executive Cover", "description": "Leadership has accidentally endorsed the nonsense, which makes everything more dangerous." },
+    { "id": "goose_authority", "label": "Goose Authority", "description": "The live goose has become a real stakeholder in the decision process." },
+    { "id": "process_brain", "label": "Process Brain", "description": "The team keeps answering chaos with committees, decks, and forms." },
+    { "id": "morale_spike", "label": "Morale Spike", "description": "The room has mistaken one tiny success for a scalable culture strategy." }
+  ],
   "nodes": [
     {
       "id": "team_1",
+      "kind": "core",
       "prompt": "Your manager says today's trust exercise will involve a fog machine and one live goose.",
       "resultText": "The room chooses how publicly this offsite will fail.",
       "choices": [
-        { "id": "team_1_a", "label": "Follow the goose", "nextNodeId": "team_2", "resultText": "The room decides the goose has the strongest leadership energy in the building." },
-        { "id": "team_1_b", "label": "Pitch synergy deck", "nextNodeId": "team_3", "resultText": "Instead of escaping, the team volunteers a slide deck and makes the offsite worse on purpose." },
-        { "id": "team_1_c", "label": "Hide in catering", "nextNodeId": "team_4", "resultText": "Morale collapses into a buffet strategy and everyone pretends that counts as alignment." }
+        { "id": "team_1_a", "label": "Follow the goose", "nextNodeId": "team_2", "resultText": "The room decides the goose has the strongest leadership energy in the building.", "effects": [{ "type": "add_modifier", "modifierId": "goose_authority" }] },
+        { "id": "team_1_b", "label": "Pitch a synergy deck", "nextNodeId": "team_3", "resultText": "Instead of escaping, the team volunteers a slide deck and makes the offsite worse on purpose.", "effects": [{ "type": "add_modifier", "modifierId": "process_brain" }] },
+        { "id": "team_1_c", "label": "Hide in catering", "nextNodeId": "team_4", "resultText": "Morale collapses into a buffet strategy and everyone pretends that counts as alignment.", "effects": [{ "type": "add_modifier", "modifierId": "morale_spike" }] }
       ]
     },
     {
       "id": "team_2",
+      "kind": "core",
       "prompt": "The goose leads everyone into the CEO's meditation pod.",
       "resultText": "The room converts a bird incident into executive disruption.",
       "choices": [
-        { "id": "team_2_a", "label": "Call it innovation", "nextNodeId": "team_5", "resultText": "The room reframes a bird incident as disruptive thinking and drags leadership into it." },
-        { "id": "team_2_b", "label": "Elect the goose chair", "nextNodeId": "team_6", "resultText": "Democracy fails instantly and the goose acquires executive authority." }
+        { "id": "team_2_a", "label": "Call it innovation", "nextNodeId": "team_5", "resultText": "The room reframes a bird incident as disruptive thinking and drags leadership into it.", "effects": [{ "type": "add_modifier", "modifierId": "executive_cover" }] },
+        { "id": "team_2_b", "label": "Elect the goose interim chair", "nextNodeId": "team_6", "resultText": "Democracy fails instantly and the goose acquires executive authority." }
       ]
     },
     {
       "id": "team_3",
+      "kind": "core",
       "prompt": "Your slide deck opens with a typo so bad that finance starts crying.",
-      "resultText": "The room decides whether to double down or weaponize confidence.",
+      "resultText": "The room decides whether to double down or build process around the mistake.",
       "choices": [
-        { "id": "team_3_a", "label": "Present harder", "nextNodeId": "team_5", "resultText": "The room mistakes volume for recovery and turns the typo into a company-wide event." },
-        { "id": "team_3_b", "label": "Blame auto-correct", "nextNodeId": "team_6", "resultText": "The deck dies, accountability evaporates, and the goose keeps gaining power." }
+        { "id": "team_3_a", "label": "Present harder", "nextNodeId": "team_7", "resultText": "The room mistakes volume for recovery and turns the typo into a company-wide event." },
+        { "id": "team_3_b", "label": "Create a correction task force", "nextNodeId": "team_8", "resultText": "The team responds to one typo with a governance model.", "effects": [{ "type": "add_modifier", "modifierId": "process_brain" }] }
       ]
     },
     {
       "id": "team_4",
+      "kind": "core",
       "prompt": "Catering is only sparkling water and one suspicious sheet cake.",
       "resultText": "The room chooses the exact flavor of morale collapse.",
+      "audienceInterventionNodeIds": ["team_15"],
       "choices": [
-        { "id": "team_4_a", "label": "Launch cake committee", "nextNodeId": "team_5", "resultText": "The room creates governance around one suspicious cake and accidentally triggers HR." },
-        { "id": "team_4_b", "label": "Expense the vibes", "nextNodeId": "team_6", "resultText": "Someone tries filing morale as an expense and the goose emerges as the only adult present." }
+        { "id": "team_4_a", "label": "Launch a cake committee", "nextNodeId": "team_9", "resultText": "The room creates governance around one suspicious cake and accidentally triggers HR.", "effects": [{ "type": "add_modifier", "modifierId": "process_brain" }] },
+        { "id": "team_4_b", "label": "Toast to surviving this", "nextNodeId": "team_10", "resultText": "A tiny morale bump convinces everyone they can absolutely make this worse.", "effects": [{ "type": "add_modifier", "modifierId": "morale_spike" }] }
       ]
     },
     {
       "id": "team_5",
-      "prompt": "HR describes the offsite as unforgettable for all the wrong legal reasons.",
+      "kind": "core",
+      "prompt": "An executive assistant walks in, sees the goose in the pod, and assumes this is a new leadership ritual.",
+      "promptVariants": [
+        { "text": "An executive assistant walks in, sees the goose in the pod, and congratulates the team on pioneering 'animal-guided leadership.'", "gate": { "requiredModifiers": ["executive_cover"] } }
+      ],
+      "resultText": "The room must decide whether to protect the illusion or sell it harder.",
+      "specialEventChance": 0.6,
+      "choices": [
+        { "id": "team_5_a", "label": "Turn it into a keynote", "nextNodeId": "team_11", "resultText": "The room builds strategy slides around a bird because a title makes anything sound deliberate.", "specialEventNodeIds": ["team_16"] },
+        { "id": "team_5_b", "label": "Send the goose on a listening tour", "nextNodeId": "team_12", "resultText": "The room decentralizes authority directly into feathers." }
+      ]
+    },
+    {
+      "id": "team_6",
+      "kind": "core",
+      "prompt": "The goose snaps at a vice president and morale skyrockets for reasons nobody can defend.",
+      "resultText": "The room weaponizes the bird or tries to operationalize it.",
+      "choices": [
+        { "id": "team_6_a", "label": "Put the goose in charge of feedback", "nextNodeId": "team_11", "resultText": "The room outsources truth-telling to wildlife.", "effects": [{ "type": "add_modifier", "modifierId": "goose_authority" }] },
+        { "id": "team_6_b", "label": "Draft a goose escalation ladder", "nextNodeId": "team_13", "resultText": "The room invents process for situations it should have prevented." }
+      ]
+    },
+    {
+      "id": "team_7",
+      "kind": "core",
+      "prompt": "The typo deck somehow inspires applause from sales, who think this is a bold anti-perfectionism stance.",
+      "resultText": "The room chooses whether to bottle the chaos or let sales rename it.",
+      "choices": [
+        { "id": "team_7_a", "label": "Brand it as raw authenticity", "nextNodeId": "team_12", "resultText": "The room upgrades an error into a campaign." },
+        { "id": "team_7_b", "label": "Schedule an apology summit", "nextNodeId": "team_14", "resultText": "The room responds to applause with a full internal incident plan." }
+      ]
+    },
+    {
+      "id": "team_8",
+      "kind": "core",
+      "prompt": "The correction task force already has a Slack channel, a charter, and one internal enemy.",
+      "resultText": "The room can either formalize the nonsense or lose control of it.",
+      "choices": [
+        { "id": "team_8_a", "label": "Expand it into a steering committee", "nextNodeId": "team_13", "resultText": "The room discovers that process can absolutely become a live hazard.", "effects": [{ "type": "add_modifier", "modifierId": "process_brain" }] },
+        { "id": "team_8_b", "label": "Invite leadership to observe", "nextNodeId": "team_14", "resultText": "The team escalates the problem by making it visible upward.", "effects": [{ "type": "add_modifier", "modifierId": "executive_cover" }] }
+      ]
+    },
+    {
+      "id": "team_9",
+      "kind": "core",
+      "prompt": "The cake committee now has bylaws and a split caucus on frosting transparency.",
+      "resultText": "The room chooses whether to protect morale or weaponize governance.",
+      "wildcardChance": 0.55,
+      "choices": [
+        { "id": "team_9_a", "label": "Hold a tasting referendum", "nextNodeId": "team_12", "resultText": "The room invites democracy into a situation that did not need it.", "wildcardNodeIds": ["team_17"] },
+        { "id": "team_9_b", "label": "Appoint a cake czar", "nextNodeId": "team_13", "resultText": "The room solves committee fatigue with monarchy." }
+      ]
+    },
+    {
+      "id": "team_10",
+      "kind": "core",
+      "prompt": "One sincere toast makes everyone briefly believe this offsite is salvageable.",
+      "promptVariants": [
+        { "text": "One sincere toast makes everyone briefly believe this offsite is the start of a culture turnaround, which is deeply dangerous.", "gate": { "requiredModifiers": ["morale_spike"] } }
+      ],
+      "resultText": "The room now has optimism to misuse.",
+      "choices": [
+        { "id": "team_10_a", "label": "Open a vulnerable sharing circle", "nextNodeId": "team_11", "resultText": "The room creates a feelings arena directly beside a live goose." },
+        { "id": "team_10_b", "label": "Pitch a permanent offsite ritual", "nextNodeId": "team_14", "resultText": "The room tries to institutionalize the worst day of the quarter." }
+      ]
+    },
+    {
+      "id": "team_11",
+      "kind": "core",
+      "prompt": "Leadership asks for a closing statement before anyone is allowed to leave the offsite.",
+      "resultText": "The room can still end this badly, or historically badly.",
+      "choices": [
+        { "id": "team_11_a", "label": "Declare the goose a leadership framework", "nextNodeId": "team_18", "resultText": "The room translates animal chaos into executive language and nobody stops it." },
+        { "id": "team_11_b", "label": "Promise measurable trust outcomes", "nextNodeId": "team_19", "resultText": "You put metrics on vibes and the legal department begins to stir." }
+      ]
+    },
+    {
+      "id": "team_12",
+      "kind": "core",
+      "prompt": "A regional VP hears about your offsite and asks whether this can roll out company-wide.",
+      "resultText": "The room has to decide whether to protect the org or doom it at scale.",
+      "audienceInterventionNodeIds": ["team_15"],
+      "choices": [
+        { "id": "team_12_a", "label": "Offer a pilot program", "nextNodeId": "team_20", "resultText": "The room converts one bad day into a replicable playbook." },
+        { "id": "team_12_b", "label": "Claim it only works with the goose", "nextNodeId": "team_21", "resultText": "The room ties scalability to a single hostile bird." }
+      ]
+    },
+    {
+      "id": "team_13",
+      "kind": "core",
+      "prompt": "Operations discovers your side process and wants to know who approved any of this.",
+      "promptVariants": [
+        { "text": "Operations discovers your side process, but leadership has already begun calling it a courageous experiment.", "gate": { "requiredModifiers": ["executive_cover"] } }
+      ],
+      "resultText": "The room chooses between punishment, paperwork, and absurd success.",
+      "choices": [
+        { "id": "team_13_a", "label": "Bury them in documentation", "nextNodeId": "team_19", "resultText": "The room answers scrutiny with more forms than anyone can absorb." },
+        { "id": "team_13_b", "label": "Invite ops into the chaos", "nextNodeId": "team_20", "resultText": "The room widens the blast radius and calls it alignment." }
+      ]
+    },
+    {
+      "id": "team_14",
+      "kind": "core",
+      "prompt": "HR asks for the official narrative before rumors fill in the blanks.",
+      "resultText": "The room now has one last chance to frame the disaster.",
+      "choices": [
+        { "id": "team_14_a", "label": "Call it restorative trust theater", "nextNodeId": "team_21", "resultText": "The room invents a phrase so confident that HR has to write it down." },
+        { "id": "team_14_b", "label": "Blame the fog machine vendor", "nextNodeId": "team_22", "resultText": "Accountability evaporates into smoke and procurement gets dragged into it." }
+      ]
+    },
+    {
+      "id": "team_15",
+      "kind": "audience_intervention",
+      "prompt": "The room deadlocks so badly that the goose slaps a laminated values poster off the wall and everyone interprets it as a sign.",
+      "resultText": "Audience intervention arrives via wildlife and suddenly the room has permission to escalate.",
+      "choices": [
+        { "id": "team_15_a", "label": "Treat it as a mandate for pilot rollout", "nextNodeId": "team_12", "resultText": "The room mistakes symbolism for executive approval." },
+        { "id": "team_15_b", "label": "Spin it into a leadership framework", "nextNodeId": "team_11", "resultText": "The room uses a bird tantrum as strategic evidence." }
+      ]
+    },
+    {
+      "id": "team_16",
+      "kind": "special_event",
+      "prompt": "A keynote coach in the next conference room hears the commotion and volunteers to help you 'land the lesson.'",
+      "resultText": "The room acquires an expensive stranger with dangerous levels of confidence.",
+      "choices": [
+        { "id": "team_16_a", "label": "Use the coach to polish the lie", "nextNodeId": "team_11", "resultText": "The room upgrades nonsense into executive diction." },
+        { "id": "team_16_b", "label": "Send the coach to the pilot pitch", "nextNodeId": "team_12", "resultText": "The room outsources credibility and keeps all the risk." }
+      ]
+    },
+    {
+      "id": "team_17",
+      "kind": "wildcard",
+      "prompt": "A neighboring workshop mistakes your cake referendum for a live innovation lab and starts taking notes.",
+      "resultText": "The room gains external observers who are far too enthusiastic.",
+      "choices": [
+        { "id": "team_17_a", "label": "Absorb them into the committee", "nextNodeId": "team_12", "resultText": "The room scales dysfunction by inviting fresh witnesses." },
+        { "id": "team_17_b", "label": "Let them publish the findings", "nextNodeId": "team_13", "resultText": "The room outsources narrative control in exchange for buzz." }
+      ]
+    },
+    {
+      "id": "team_18",
+      "kind": "ending",
+      "prompt": "The goose is promoted ahead of the entire product org and somehow posts immediate trust gains.",
       "ending": true,
       "choices": []
     },
     {
-      "id": "team_6",
-      "prompt": "The goose is promoted ahead of the entire product org.",
+      "id": "team_19",
+      "kind": "ending",
+      "prompt": "HR describes the offsite as unforgettable for all the wrong legal reasons and schedules six follow-up trainings.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "team_20",
+      "kind": "ending",
+      "prompt": "Corporate rolls your accidental ritual into three regions before anyone can admit it was a mistake.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "team_21",
+      "kind": "ending",
+      "prompt": "The team leaves with morale at an all-time high and zero shared understanding of what actually happened.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "team_22",
+      "kind": "ending",
+      "prompt": "Procurement blames the fog machine, finance blames the deck, and the goose remains the only respected leader in the building.",
       "ending": true,
       "choices": []
     }

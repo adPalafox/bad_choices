@@ -1,4 +1,5 @@
 import { getScenarioNode, getScenarioPack } from "@/lib/content";
+import { chooseNextNodeId, resolveScenarioNode } from "@/lib/scenario-engine";
 import type {
   ApiRoomState,
   Choice,
@@ -112,14 +113,16 @@ function getResolutionLead(resolutionType: ResolutionType, winningChoice: Choice
   }
 }
 
-export function buildEventRecord(room: RoomRecord, votes: VoteRecord[]) {
-  const node = getScenarioNode(room.scenario_pack, room.current_node_id);
+export function buildEventRecord(room: RoomRecord, votes: VoteRecord[], events: GameEventRecord[] = []) {
+  const pack = getScenarioPack(room.scenario_pack);
+  const node = resolveScenarioNode(pack, room.current_node_id, events);
 
   if (!node) {
     throw new Error("Missing current node while building game event.");
   }
 
   const { winningChoice, voteSnapshot, resolutionType } = tallyVotes(node.choices, votes);
+  const nextNodeId = chooseNextNodeId(pack, room.round, node.id, winningChoice.id, resolutionType, events);
 
   return {
     round: room.round,
@@ -127,6 +130,7 @@ export function buildEventRecord(room: RoomRecord, votes: VoteRecord[]) {
     winningChoice,
     voteSnapshot,
     resolutionType,
+    nextNodeId,
     resolutionLabel: getResolutionLabel(resolutionType),
     resolutionLead: getResolutionLead(resolutionType, winningChoice),
     resultText:
@@ -136,8 +140,8 @@ export function buildEventRecord(room: RoomRecord, votes: VoteRecord[]) {
   };
 }
 
-export function createGameEventInsert(room: RoomRecord, votes: VoteRecord[]) {
-  const event = buildEventRecord(room, votes);
+export function createGameEventInsert(room: RoomRecord, votes: VoteRecord[], events: GameEventRecord[] = []) {
+  const event = buildEventRecord(room, votes, events);
 
   return {
     room_id: room.id,
@@ -146,7 +150,7 @@ export function createGameEventInsert(room: RoomRecord, votes: VoteRecord[]) {
     prompt: event.node.prompt,
     selected_choice_id: event.winningChoice.id,
     selected_choice_label: event.winningChoice.label,
-    next_node_id: event.winningChoice.nextNodeId,
+    next_node_id: event.nextNodeId,
     result_text: event.resultText,
     resolution_type: event.resolutionType,
     resolution_label: event.resolutionLabel,
@@ -199,17 +203,10 @@ export type PostGameArtifact = {
   subhead: string;
   caption: string;
   path: string;
+  pathSteps: string[];
   chaosMoments: number;
   shareMessage: string;
 };
-
-function truncateSegment(value: string, maxLength: number) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
-}
 
 function buildChaosLine(chaosMoments: number) {
   if (chaosMoments === 0) {
@@ -226,10 +223,10 @@ function buildChaosLine(chaosMoments: number) {
 export function buildPostGameArtifact(state: ApiRoomState): PostGameArtifact {
   const rounds = state.events.length;
   const players = state.players.length;
-  const pathSegments = state.events.map((event) => truncateSegment(event.selected_choice_label, 30));
+  const pathSegments = state.events.map((event) => event.selected_choice_label);
   const path = pathSegments.join(" -> ");
   const chaosMoments = state.events.filter((event) => event.resolution_type !== "majority").length;
-  const headline = truncateSegment(state.currentNode?.prompt ?? "The room survived, technically.", 96);
+  const headline = state.currentNode?.prompt ?? "The room survived, technically.";
   const caption = buildChaosLine(chaosMoments);
   const subhead = `${state.pack.title} | ${players} players | ${rounds} decisions`;
   const shareMessage = `We just imploded our way through "${state.pack.title}" in Bad Choices. ${headline}`;
@@ -239,6 +236,7 @@ export function buildPostGameArtifact(state: ApiRoomState): PostGameArtifact {
     subhead,
     caption,
     path,
+    pathSteps: pathSegments,
     chaosMoments,
     shareMessage
   };

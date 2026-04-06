@@ -3,53 +3,229 @@
   "title": "Date Night Disaster",
   "theme": "Romance collapses under confident, terrible decisions.",
   "startNodeId": "date_1",
+  "modifiers": [
+    { "id": "romantic_momentum", "label": "Romantic Momentum", "description": "The bit has started reading as sincere, which is now everyone's problem." },
+    { "id": "fraud_energy", "label": "Fraud Energy", "description": "The room keeps solving tension with lies and public commitments." },
+    { "id": "dessert_chaos", "label": "Dessert Chaos", "description": "Sugar has replaced caution as the decision-making framework." },
+    { "id": "witnesses", "label": "Too Many Witnesses", "description": "Strangers are now emotionally invested in the outcome." }
+  ],
   "nodes": [
     {
       "id": "date_1",
+      "kind": "core",
       "prompt": "Halfway through your date, the restaurant lights cut out and a violinist keeps playing.",
       "resultText": "The room decides how hard to commit to the accidental drama.",
       "choices": [
-        { "id": "date_1_a", "label": "Propose as a bit", "nextNodeId": "date_2", "resultText": "The room commits to the biggest possible joke and instantly makes it everyone's problem." },
-        { "id": "date_1_b", "label": "Blame the moon", "nextNodeId": "date_3", "resultText": "You hand full responsibility to the night sky and hope charisma does the rest." },
-        { "id": "date_1_c", "label": "Steal dessert first", "nextNodeId": "date_4", "resultText": "Romance takes a back seat to lava cake theft and a wildly confident spoon plan." }
+        { "id": "date_1_a", "label": "Propose as a bit", "nextNodeId": "date_2", "resultText": "The room commits to the biggest possible joke and instantly makes it everyone's problem.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] },
+        { "id": "date_1_b", "label": "Blame the moon", "nextNodeId": "date_3", "resultText": "You hand full responsibility to the night sky and hope charisma does the rest.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_1_c", "label": "Steal dessert first", "nextNodeId": "date_4", "resultText": "Romance takes a back seat to lava cake theft and a wildly confident spoon plan.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
       ]
     },
     {
       "id": "date_2",
+      "kind": "core",
       "prompt": "The next table starts cheering and someone offers to livestream the moment.",
       "resultText": "The room weaponizes secondhand intimacy.",
       "choices": [
-        { "id": "date_2_a", "label": "Commit to the speech", "nextNodeId": "date_5", "resultText": "The fake proposal gets so detailed that nobody can tell when the bit ended." },
-        { "id": "date_2_b", "label": "Crowdfund the ring", "nextNodeId": "date_6", "resultText": "Nothing kills the mood faster than turning romance into a live fundraiser." }
+        { "id": "date_2_a", "label": "Commit to the speech", "nextNodeId": "date_5", "resultText": "The fake proposal gets so detailed that nobody can tell when the bit ended.", "effects": [{ "type": "add_modifier", "modifierId": "witnesses" }] },
+        { "id": "date_2_b", "label": "Crowdfund the ring", "nextNodeId": "date_6", "resultText": "Nothing kills the mood faster than turning romance into a live fundraiser.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] }
       ]
     },
     {
       "id": "date_3",
+      "kind": "core",
       "prompt": "Your date asks whether this line works often for you.",
       "resultText": "The room chooses between charm failure and honesty failure.",
       "choices": [
-        { "id": "date_3_a", "label": "Say it never misses", "nextNodeId": "date_5", "resultText": "You double down with impossible confidence and the date becomes a legend by force." },
-        { "id": "date_3_b", "label": "Pivot into astrology", "nextNodeId": "date_6", "resultText": "The room calls an audible into zodiac discourse and the evening never recovers." }
+        { "id": "date_3_a", "label": "Say it never misses", "nextNodeId": "date_7", "resultText": "You double down with impossible confidence and the date becomes a legend by force.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_3_b", "label": "Pivot into astrology", "nextNodeId": "date_8", "resultText": "The room calls an audible into zodiac discourse and the evening never recovers." }
       ]
     },
     {
       "id": "date_4",
+      "kind": "core",
       "prompt": "The waiter catches you holding two spoons and an entire lava cake.",
       "resultText": "The room turns dessert theft into relationship lore.",
+      "audienceInterventionNodeIds": ["date_15"],
       "choices": [
-        { "id": "date_4_a", "label": "Offer a bite", "nextNodeId": "date_5", "resultText": "Sharing the stolen cake somehow reads as intimate enough to become relationship canon." },
-        { "id": "date_4_b", "label": "Claim emotional support cake", "nextNodeId": "date_6", "resultText": "The legal defense for dessert theft is so bad it ends the date on contact." }
+        { "id": "date_4_a", "label": "Offer a bite", "nextNodeId": "date_9", "resultText": "Sharing the stolen cake somehow reads as intimate enough to become relationship canon.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_4_b", "label": "Claim emotional support cake", "nextNodeId": "date_10", "resultText": "The legal defense for dessert theft is so bad it becomes the whole evening.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
       ]
     },
     {
       "id": "date_5",
-      "prompt": "You leave the restaurant engaged to a joke that nobody can safely undo.",
+      "kind": "core",
+      "prompt": "A live pianist asks if he should keep underscoring your proposal speech.",
+      "promptVariants": [
+        { "text": "A live pianist has already started underscoring your proposal speech because the room sold the bit too well.", "gate": { "requiredModifiers": ["witnesses"] } }
+      ],
+      "resultText": "The room chooses between sincere escalation and theatrical bankruptcy.",
+      "specialEventChance": 0.6,
+      "choices": [
+        { "id": "date_5_a", "label": "Add vows for dramatic texture", "nextNodeId": "date_11", "resultText": "The room starts improvising promises like contract law with candlelight.", "specialEventNodeIds": ["date_16"] },
+        { "id": "date_5_b", "label": "Ask strangers to officiate", "nextNodeId": "date_12", "resultText": "The room crowdsources commitment from people who just wanted dinner." }
+      ]
+    },
+    {
+      "id": "date_6",
+      "kind": "core",
+      "prompt": "A stranger actually Venmos ring money and asks for an update thread.",
+      "resultText": "The room decides whether to reward delusion or flee from accountability.",
+      "choices": [
+        { "id": "date_6_a", "label": "Post milestone updates", "nextNodeId": "date_11", "resultText": "The room turns private nonsense into serialized content.", "effects": [{ "type": "add_modifier", "modifierId": "witnesses" }] },
+        { "id": "date_6_b", "label": "Spend it all on dessert tower diplomacy", "nextNodeId": "date_13", "resultText": "Fraud becomes pastry-based and somehow more romantic." }
+      ]
+    },
+    {
+      "id": "date_7",
+      "kind": "core",
+      "prompt": "Your date asks for a second line and the violinist is still somehow following you.",
+      "resultText": "The room can either lock in the charm or collapse under witness pressure.",
+      "choices": [
+        { "id": "date_7_a", "label": "Invent a destiny anecdote", "nextNodeId": "date_12", "resultText": "The room manufactures history like it can be fact-checked later." },
+        { "id": "date_7_b", "label": "Pretend this is all a surprise flash mob", "nextNodeId": "date_14", "resultText": "The room expands one lie into a full production." }
+      ]
+    },
+    {
+      "id": "date_8",
+      "kind": "core",
+      "prompt": "Astrology lands harder than expected and now your date wants a cosmic compatibility demo.",
+      "resultText": "The room chooses between intimacy theater and celestial fraud.",
+      "choices": [
+        { "id": "date_8_a", "label": "Read the moon with confidence", "nextNodeId": "date_13", "resultText": "You explain the stars like customer service for fate.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] },
+        { "id": "date_8_b", "label": "Order matching drinks for the signs", "nextNodeId": "date_14", "resultText": "The room turns mysticism into a paired beverage program." }
+      ]
+    },
+    {
+      "id": "date_9",
+      "kind": "core",
+      "prompt": "The stolen dessert moment becomes so weirdly intimate that the waiter offers free champagne.",
+      "resultText": "The room has to decide whether to reward the vibe or confess the theft.",
+      "wildcardChance": 0.55,
+      "choices": [
+        { "id": "date_9_a", "label": "Toast to mutual bad judgment", "nextNodeId": "date_12", "resultText": "The room finds chemistry in the exact wrong place.", "wildcardNodeIds": ["date_17"] },
+        { "id": "date_9_b", "label": "Pitch a shared dessert startup", "nextNodeId": "date_13", "resultText": "The room monetizes intimacy before it stabilizes." }
+      ]
+    },
+    {
+      "id": "date_10",
+      "kind": "core",
+      "prompt": "The manager appears holding a comped tiramisu and a concern for public decorum.",
+      "resultText": "The room chooses between apology theater and louder cake crime.",
+      "choices": [
+        { "id": "date_10_a", "label": "Turn the apology into a toast", "nextNodeId": "date_11", "resultText": "The room mistakes consequences for a setup line." },
+        { "id": "date_10_b", "label": "Escalate to dessert tasting menu", "nextNodeId": "date_14", "resultText": "The room responds to scrutiny with sugar-fueled ambition." }
+      ]
+    },
+    {
+      "id": "date_11",
+      "kind": "core",
+      "prompt": "The whole restaurant now assumes an engagement announcement is coming any second.",
+      "promptVariants": [
+        { "text": "The whole restaurant now assumes this is a real engagement and has started recording from better angles.", "gate": { "requiredModifiers": ["witnesses"] } }
+      ],
+      "resultText": "The room chooses whether to cross the line or fully erase it.",
+      "choices": [
+        { "id": "date_11_a", "label": "Produce a fake timeline of your love story", "nextNodeId": "date_18", "resultText": "The room tells a complete relationship origin story with zero supporting evidence." },
+        { "id": "date_11_b", "label": "Announce the wedding hashtag", "nextNodeId": "date_19", "resultText": "The room builds a digital monument to a joke in real time." }
+      ]
+    },
+    {
+      "id": "date_12",
+      "kind": "core",
+      "prompt": "A nearby table offers to pay for your drinks if the night ends in 'something memorable.'",
+      "resultText": "The room now has sponsors, which is the least romantic possible development.",
+      "audienceInterventionNodeIds": ["date_15"],
+      "choices": [
+        { "id": "date_12_a", "label": "Take the money and stage a moonlit exit", "nextNodeId": "date_20", "resultText": "The room accidentally lands on cinematic disaster with excellent lighting." },
+        { "id": "date_12_b", "label": "Turn the whole room into witnesses", "nextNodeId": "date_21", "resultText": "You upgrade dinner strangers into chorus members of the bit." }
+      ]
+    },
+    {
+      "id": "date_13",
+      "kind": "core",
+      "prompt": "The dessert tower diplomacy somehow attracts a local food influencer.",
+      "promptVariants": [
+        { "text": "The dessert tower diplomacy attracts a local food influencer who calls your chemistry 'deeply suspicious, but watchable.'", "gate": { "requiredModifiers": ["dessert_chaos"] } }
+      ],
+      "resultText": "The room chooses whether to become iconic or litigable.",
+      "choices": [
+        { "id": "date_13_a", "label": "Lean into couple branding", "nextNodeId": "date_20", "resultText": "The room productizes flirtation at alarming speed." },
+        { "id": "date_13_b", "label": "Offer the influencer first dance rights", "nextNodeId": "date_22", "resultText": "The room turns dinner into a multi-party spectacle." }
+      ]
+    },
+    {
+      "id": "date_14",
+      "kind": "core",
+      "prompt": "The flash mob lie gets out of hand and now the staff wants your cue for the finale.",
+      "resultText": "The room must either cash in the lie or get crushed beneath it.",
+      "choices": [
+        { "id": "date_14_a", "label": "Cue confetti and commit", "nextNodeId": "date_21", "resultText": "The room transforms embarrassment into event design." },
+        { "id": "date_14_b", "label": "Pretend the finale is a strategic retreat", "nextNodeId": "date_22", "resultText": "The room withdraws with exactly zero dignity." }
+      ]
+    },
+    {
+      "id": "date_15",
+      "kind": "audience_intervention",
+      "prompt": "The room hesitates so long that the violinist takes over and loudly declares this a once-in-a-lifetime romance activation.",
+      "resultText": "Audience intervention arrives by making the evening much more public than anyone intended.",
+      "choices": [
+        { "id": "date_15_a", "label": "Use the spotlight to fake sincerity", "nextNodeId": "date_12", "resultText": "The room borrows confidence from an artist who should have left already." },
+        { "id": "date_15_b", "label": "Redirect everyone toward dessert", "nextNodeId": "date_13", "resultText": "You solve emotional pressure with sugar and movement." }
+      ]
+    },
+    {
+      "id": "date_16",
+      "kind": "special_event",
+      "prompt": "A jeweler at the bar hears the speech, opens a travel case, and offers you a 'sponsorship ring' on commission.",
+      "resultText": "The room acquires access to props that make the bit impossible to contain.",
+      "choices": [
+        { "id": "date_16_a", "label": "Take the ring and keep going", "nextNodeId": "date_11", "resultText": "The room upgrades the lie with hardware." },
+        { "id": "date_16_b", "label": "Trade the ring for a dramatic getaway", "nextNodeId": "date_12", "resultText": "The room turns jewelry into mobility." }
+      ]
+    },
+    {
+      "id": "date_17",
+      "kind": "wildcard",
+      "prompt": "A wedding party in the private room next door mistakes your table for the warm-up act and sends over a photographer.",
+      "resultText": "The room is now operating with professional documentation against its will.",
+      "choices": [
+        { "id": "date_17_a", "label": "Pose like it was planned", "nextNodeId": "date_12", "resultText": "The room converts panic into posture." },
+        { "id": "date_17_b", "label": "Ask for edited proofs before dessert", "nextNodeId": "date_13", "resultText": "You try to control the narrative before the narrative exists." }
+      ]
+    },
+    {
+      "id": "date_18",
+      "kind": "ending",
+      "prompt": "You leave the restaurant engaged to a joke that nobody can safely undo without disappointing fifty witnesses.",
       "ending": true,
       "choices": []
     },
     {
-      "id": "date_6",
-      "prompt": "The date ends with a free tiramisu and a permanent block on every app.",
+      "id": "date_19",
+      "kind": "ending",
+      "prompt": "The hashtag trends locally, the date survives somehow, and both of you now have to live inside an avoidable legend.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "date_20",
+      "kind": "ending",
+      "prompt": "The night ends with stolen dessert, free drinks, and a suspicious amount of genuine chemistry.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "date_21",
+      "kind": "ending",
+      "prompt": "Restaurant staff carry you into the street like newlyweds while both of you are still trying to remember each other's last names.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "date_22",
+      "kind": "ending",
+      "prompt": "The date ends with a comped tiramisu, three deleted apps, and a permanent ban from themed dining.",
       "ending": true,
       "choices": []
     }

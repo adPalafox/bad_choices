@@ -1,11 +1,36 @@
 export type GamePhase = "lobby" | "voting" | "reveal" | "ended";
 export type ResolutionType = "majority" | "indecision_tie" | "indecision_no_vote";
+export type ScenarioNodeKind = "core" | "wildcard" | "audience_intervention" | "special_event" | "ending";
+
+export type ModifierGate = {
+  requiredModifiers?: string[];
+  blockedModifiers?: string[];
+  minChaosMoments?: number;
+  maxChaosMoments?: number;
+  requiredVisitedNodeIds?: string[];
+  blockedVisitedNodeIds?: string[];
+};
+
+export type TextVariant = {
+  text: string;
+  gate?: ModifierGate;
+};
+
+export type ChoiceEffect = {
+  type: "add_modifier" | "remove_modifier";
+  modifierId: string;
+};
 
 export type Choice = {
   id: string;
   label: string;
   nextNodeId: string;
   resultText?: string;
+  gate?: ModifierGate;
+  effects?: ChoiceEffect[];
+  wildcardNodeIds?: string[];
+  specialEventNodeIds?: string[];
+  labelVariants?: TextVariant[];
 };
 
 export type ScenarioNode = {
@@ -13,6 +38,12 @@ export type ScenarioNode = {
   prompt: string;
   resultText?: string;
   ending?: boolean;
+  kind?: ScenarioNodeKind;
+  gate?: ModifierGate;
+  promptVariants?: TextVariant[];
+  audienceInterventionNodeIds?: string[];
+  wildcardChance?: number;
+  specialEventChance?: number;
   choices: Choice[];
 };
 
@@ -22,6 +53,11 @@ export type ScenarioPack = {
   theme: string;
   startNodeId: string;
   nodes: ScenarioNode[];
+  modifiers?: Array<{
+    id: string;
+    label: string;
+    description: string;
+  }>;
 };
 
 export type RoomRecord = {

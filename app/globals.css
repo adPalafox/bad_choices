@@ -606,6 +606,7 @@ button {
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .artifact-actions {
@@ -657,22 +658,35 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .artifact-card-caption {
   margin: -6px 0 0;
-  max-width: 46ch;
+  max-width: none;
   color: rgba(247, 243, 233, 0.86);
   font-size: 0.98rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .artifact-card-headline {
   margin: 0;
   font-size: clamp(2.4rem, 5vw, 4.2rem);
-  line-height: 0.95;
+  line-height: 1.02;
   letter-spacing: -0.06em;
-  max-width: 12ch;
+  max-width: none;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.artifact-card-headline.is-long {
+  font-size: clamp(2rem, 4.2vw, 3.3rem);
+}
+
+.artifact-card-headline.is-xlong {
+  font-size: clamp(1.65rem, 3.3vw, 2.55rem);
 }
 
 .artifact-path-block {
@@ -691,10 +705,39 @@ button {
   font-size: 0.76rem;
 }
 
-.artifact-path-block strong {
+.artifact-path-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: baseline;
+}
+
+.artifact-path-steps.is-long {
+  gap: 6px 8px;
+}
+
+.artifact-path-step,
+.recap-path-step {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.artifact-path-step strong,
+.recap-path-step strong {
   font-size: 1.08rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.artifact-path-step em,
+.recap-path-step em {
+  color: var(--warm);
+  font-style: normal;
+  opacity: 0.8;
 }
 
 .vote-bar-group,
@@ -720,6 +763,37 @@ button {
   grid-template-columns: 1fr auto auto;
   gap: 12px;
   align-items: center;
+}
+
+.recap-card {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.recap-card span,
+.recap-card strong {
+  min-width: 0;
+}
+
+.recap-card strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.recap-path-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: baseline;
+}
+
+.recap-card-path {
+  gap: 10px;
+}
+
+.recap-card-stat {
+  gap: 6px;
 }
 
 .vote-row em {
@@ -793,6 +867,56 @@ button {
 
 .landing-hero {
   margin-bottom: 18px;
+}
+
+.landing-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.landing-hero-copy {
+  display: grid;
+  gap: 12px;
+  max-width: 1120px;
+}
+
+.landing-logo-lockup {
+  display: grid;
+  grid-template-columns: clamp(124px, 14vw, 168px) minmax(0, auto);
+  align-items: center;
+  justify-content: start;
+  max-width: 760px;
+}
+
+.landing-logo {
+  width: 100%;
+  max-width: 168px;
+  height: auto;
+  filter: drop-shadow(0 18px 36px rgba(6, 8, 20, 0.35));
+}
+
+.landing-brand-copy {
+  display: grid;
+  align-content: center;
+}
+
+.landing-logo-lockup h1 {
+  margin: 0;
+  display: grid;
+  gap: 0;
+  font-size: clamp(2.8rem, 6.4vw, 5rem);
+  line-height: 0.84;
+  letter-spacing: -0.06em;
+}
+
+.landing-logo-lockup h1 span {
+  display: block;
+}
+
+.hero-copy {
+  max-width: 58rem;
+  font-size: clamp(1.02rem, 1.6vw, 1.15rem);
+  line-height: 1.55;
 }
 
 .landing-actions {
@@ -971,6 +1095,11 @@ button {
     padding-inline: 20px;
   }
 
+  .landing-logo-lockup {
+    grid-template-columns: 120px minmax(0, auto);
+    column-gap: 18px;
+  }
+
   .choice-button {
     min-height: 110px;
     padding: 14px 16px;
@@ -1006,12 +1135,46 @@ button {
     font-size: clamp(2rem, 11vw, 3rem);
   }
 
+  .artifact-path-step strong,
+  .recap-path-step strong {
+    font-size: 1rem;
+  }
+
   .artifact-card-caption {
     font-size: 0.92rem;
   }
 }
 
 @media (max-width: 560px) {
+  .landing-hero-copy {
+    gap: 16px;
+  }
+
+  .landing-logo-lockup {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    row-gap: 14px;
+    max-width: 100%;
+  }
+
+  .landing-logo {
+    max-width: 136px;
+  }
+
+  .landing-brand-copy {
+    justify-items: center;
+  }
+
+  .landing-logo-lockup h1 {
+    font-size: clamp(2.6rem, 14vw, 3.9rem);
+    line-height: 0.88;
+  }
+
+  .hero-copy {
+    max-width: 100%;
+  }
+
   .artifact-card {
     padding: 18px;
     gap: 14px;

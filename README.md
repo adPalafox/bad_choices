@@ -9,7 +9,7 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
 - Host-controlled room start and rematch
 - Realtime room sync with Supabase
 - Timed voting, instant reveal, and ending recap
-- Three starter scenario packs:
+- Three replayable starter scenario packs with modifiers, detours, and multiple endings:
   - `chaotic-friends`
   - `date-night-disaster`
   - `cursed-team-building`
@@ -85,6 +85,7 @@ Scenario content is plain JSON. Each pack must define:
 - `theme`
 - `startNodeId`
 - `nodes[]`
+- optional `modifiers[]`
 
 Each node must define:
 
@@ -93,14 +94,51 @@ Each node must define:
 - `choices[]`
 - optional `resultText`
 - optional `ending`
+- optional `kind`
+- optional `gate`
+- optional `promptVariants[]`
+- optional `audienceInterventionNodeIds[]`
+- optional `wildcardChance`
+- optional `specialEventChance`
 
 Each choice must define:
 
 - `id`
 - `label`
 - `nextNodeId`
+- optional `resultText`
+- optional `gate`
+- optional `effects[]`
+- optional `wildcardNodeIds[]`
+- optional `specialEventNodeIds[]`
+- optional `labelVariants[]`
 
 Import the new pack in [`lib/content.ts`](/Users/adreanpalafox/Developer/bad_choices/lib/content.ts) so it appears in the host screen.
+
+## Content depth standard
+
+All packs are validated on load and should meet the current replayability floor:
+
+- at least `18` nodes
+- at least `5` endings
+- minimum ending depth of `4` decisions from the pack opener
+- no duplicate node ids or choice ids
+- all `nextNodeId`, wildcard, special event, and audience intervention references must point to real nodes
+
+The recommended structure is:
+
+- `1` opener
+- `3` first-branch nodes
+- `6+` mid-run nodes
+- `2+` detour nodes across wildcards, audience interventions, or special events
+- `5+` endings
+
+Replayability should come from both authored depth and reusable systems:
+
+- modifiers applied by earlier choices that change later prompts or choice availability
+- wildcard nodes that occasionally detour a run
+- audience intervention nodes triggered by ties or no-vote chaos
+- special event nodes that can interrupt a branch before it resolves into an ending
 
 ## Open-source notes
 

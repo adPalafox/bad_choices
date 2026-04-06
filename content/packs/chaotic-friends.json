@@ -3,9 +3,16 @@
   "title": "Chaotic Friends",
   "theme": "One harmless hang turns into group liability.",
   "startNodeId": "friends_1",
+  "modifiers": [
+    { "id": "ego", "label": "Main Character Energy", "description": "The room starts making decisions like the crowd is already chanting their names." },
+    { "id": "viral", "label": "Viral Momentum", "description": "Everything gets louder because the internet has started paying attention." },
+    { "id": "official", "label": "Mistaken Legitimacy", "description": "Enough strangers believe the lie that doors start opening anyway." },
+    { "id": "cashflow", "label": "Cashflow Delusion", "description": "Revenue appears and the room immediately treats itself like a real business." }
+  ],
   "nodes": [
     {
       "id": "friends_1",
+      "kind": "core",
       "prompt": "Your group finds an unattended karaoke machine outside a convenience store.",
       "resultText": "The room picks the exact level of public embarrassment it deserves.",
       "choices": [
@@ -16,40 +23,212 @@
     },
     {
       "id": "friends_2",
+      "kind": "core",
       "prompt": "Three strangers demand to hear your best breakup anthem right now.",
       "resultText": "The room escalates from cringe to commitment instantly.",
       "choices": [
-        { "id": "friends_2_a", "label": "Scream-sing", "nextNodeId": "friends_5", "resultText": "The breakup anthem becomes a public emergency and somehow boosts ticket sales." },
-        { "id": "friends_2_b", "label": "Lip-sync badly", "nextNodeId": "friends_6", "resultText": "The room commits to fraud with choreography and loses the crowd immediately." }
+        { "id": "friends_2_a", "label": "Scream-sing with conviction", "nextNodeId": "friends_5", "resultText": "The anthem becomes a public emergency and somehow boosts attendance.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] },
+        { "id": "friends_2_b", "label": "Turn it into a crowd singalong", "nextNodeId": "friends_6", "resultText": "The room hands strangers the chorus and accidentally discovers momentum.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] }
       ]
     },
     {
       "id": "friends_3",
+      "kind": "core",
       "prompt": "Someone actually pays and asks if this is a legal event.",
-      "resultText": "The room chooses whether to lie with confidence or panic with flair.",
+      "resultText": "The room chooses whether to lie with confidence or monetize the panic.",
       "choices": [
-        { "id": "friends_3_a", "label": "Say yes confidently", "nextNodeId": "friends_5", "resultText": "Your fake festival now has lore, authority, and exactly zero permits." },
-        { "id": "friends_3_b", "label": "Run the merch table", "nextNodeId": "friends_6", "resultText": "The room pivots into merch before having a song, a plan, or legal standing." }
+        { "id": "friends_3_a", "label": "Say yes confidently", "nextNodeId": "friends_7", "resultText": "A fake permit vibe settles over the crowd and nobody challenges it fast enough.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] },
+        { "id": "friends_3_b", "label": "Open a merch tab immediately", "nextNodeId": "friends_8", "resultText": "The room pivots from event planning to reckless retail in under ten seconds.", "effects": [{ "type": "add_modifier", "modifierId": "cashflow" }] }
       ]
     },
     {
       "id": "friends_4",
+      "kind": "core",
       "prompt": "A local influencer starts filming your performance installation.",
       "resultText": "The room picks the flavor of viral regret.",
+      "audienceInterventionNodeIds": ["friends_15"],
       "choices": [
-        { "id": "friends_4_a", "label": "Lean into chaos", "nextNodeId": "friends_5", "resultText": "The influencer clip turns your mess into a movement before anyone can stop it." },
-        { "id": "friends_4_b", "label": "Demand sponsorship", "nextNodeId": "friends_6", "resultText": "The group tries monetizing the bit too early and gets laughed out of the frame." }
+        { "id": "friends_4_a", "label": "Lean into the bit", "nextNodeId": "friends_9", "resultText": "The clip turns your mess into a movement before anyone can stop it.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] },
+        { "id": "friends_4_b", "label": "Demand sponsorship on camera", "nextNodeId": "friends_10", "resultText": "The room sees a ring light and immediately starts negotiating like a failing startup.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] }
       ]
     },
     {
       "id": "friends_5",
-      "prompt": "By midnight, half the city thinks you launched a guerrilla music festival.",
+      "kind": "core",
+      "prompt": "A borrowed fog cannon arrives and the crowd starts chanting for an encore.",
+      "promptVariants": [
+        { "text": "A borrowed fog cannon arrives and the crowd starts chanting your names like this was always the plan.", "gate": { "requiredModifiers": ["ego"] } }
+      ],
+      "resultText": "The room has to decide how aggressively to mistake applause for infrastructure.",
+      "specialEventChance": 0.65,
+      "choices": [
+        { "id": "friends_5_a", "label": "Book a rooftop set", "nextNodeId": "friends_11", "resultText": "The room upgrades from sidewalk chaos to skyline liability.", "specialEventNodeIds": ["friends_16"] },
+        { "id": "friends_5_b", "label": "Stage-dive into trust", "nextNodeId": "friends_12", "resultText": "The room lets gravity handle brand strategy." }
+      ]
+    },
+    {
+      "id": "friends_6",
+      "kind": "core",
+      "prompt": "A rival busker demands a dance battle for custody of the karaoke machine.",
+      "resultText": "The room weaponizes rhythm or petty legal theory.",
+      "choices": [
+        { "id": "friends_6_a", "label": "Battle for ownership", "nextNodeId": "friends_11", "resultText": "The room treats public humiliation like binding contract law.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] },
+        { "id": "friends_6_b", "label": "Make the rival an opener", "nextNodeId": "friends_13", "resultText": "The room rebrands a feud as collaborative curation.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] }
+      ]
+    },
+    {
+      "id": "friends_7",
+      "kind": "core",
+      "prompt": "A city blogger asks for the origin story of your 'festival collective.'",
+      "promptVariants": [
+        { "text": "A city blogger asks for the origin story of your 'award-winning pop-up festival collective.'", "gate": { "requiredModifiers": ["official"] } }
+      ],
+      "resultText": "The room can either invent lore or hand the mic to bureaucracy.",
+      "choices": [
+        { "id": "friends_7_a", "label": "Invent a founding myth", "nextNodeId": "friends_12", "resultText": "The room creates oral history for an organization that existed twelve minutes ago." },
+        { "id": "friends_7_b", "label": "Promise civic enrichment", "nextNodeId": "friends_14", "resultText": "You accidentally say enough nonprofit words that people start nodding." }
+      ]
+    },
+    {
+      "id": "friends_8",
+      "kind": "core",
+      "prompt": "The merch table is suddenly out-earning the actual music.",
+      "resultText": "The room must decide whether this is a brand pivot or a tax crime.",
+      "choices": [
+        { "id": "friends_8_a", "label": "Launch VIP lanyards", "nextNodeId": "friends_13", "resultText": "The room monetizes nothing with startling professionalism.", "effects": [{ "type": "add_modifier", "modifierId": "cashflow" }] },
+        { "id": "friends_8_b", "label": "Offer equity to strangers", "nextNodeId": "friends_14", "resultText": "The room invents a cap table in a parking lot and hopes nobody asks follow-up questions.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] }
+      ]
+    },
+    {
+      "id": "friends_9",
+      "kind": "core",
+      "prompt": "A local brand wants your next stunt to be 'reckless, but family-safe.'",
+      "resultText": "The room chooses between a fake corporate pivot and an actual public hazard.",
+      "wildcardChance": 0.55,
+      "choices": [
+        { "id": "friends_9_a", "label": "Pitch a car wash rooftop set", "nextNodeId": "friends_11", "resultText": "The room confuses spectacle with structural safety.", "wildcardNodeIds": ["friends_17"] },
+        { "id": "friends_9_b", "label": "Promise a wholesome afterparty", "nextNodeId": "friends_14", "resultText": "You sell a lie so ambitious it becomes a logistics problem." }
+      ]
+    },
+    {
+      "id": "friends_10",
+      "kind": "core",
+      "prompt": "Fans demand afterparty coordinates and assume you already rented a venue.",
+      "resultText": "The room scrambles to turn confidence into a location.",
+      "choices": [
+        { "id": "friends_10_a", "label": "Hijack a community radio station", "nextNodeId": "friends_12", "resultText": "The room mistakes emergency access for a booking arrangement.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] },
+        { "id": "friends_10_b", "label": "Build a fake VIP queue", "nextNodeId": "friends_13", "resultText": "Scarcity appears out of nowhere and people line up to experience it." }
+      ]
+    },
+    {
+      "id": "friends_11",
+      "kind": "core",
+      "prompt": "The rooftop set is one extension cord away from becoming city folklore.",
+      "promptVariants": [
+        { "text": "The rooftop set is trending hard enough that strangers are climbing fire escapes just to say they were there.", "gate": { "requiredModifiers": ["viral"] } }
+      ],
+      "resultText": "The room chooses between legacy and immediate legal consequences.",
+      "choices": [
+        { "id": "friends_11_a", "label": "Play until sunrise", "nextNodeId": "friends_18", "resultText": "The room commits to myth-making with zero exit strategy." },
+        { "id": "friends_11_b", "label": "Declare a residency", "nextNodeId": "friends_19", "resultText": "You accidentally create a recurring obligation that city officials can now document.", "gate": { "requiredModifiers": ["official"] } }
+      ]
+    },
+    {
+      "id": "friends_12",
+      "kind": "core",
+      "prompt": "A community radio host offers you a live slot if you can sound 'locally beloved.'",
+      "resultText": "The room chooses whether to fake sincerity or fake ownership of public infrastructure.",
+      "audienceInterventionNodeIds": ["friends_15"],
+      "choices": [
+        { "id": "friends_12_a", "label": "Deliver an emotional thank-you speech", "nextNodeId": "friends_20", "resultText": "The room accidentally gives the city a lovable underdog story." },
+        { "id": "friends_12_b", "label": "Announce a citywide tour", "nextNodeId": "friends_21", "resultText": "The room schedules events in neighborhoods it has not visited." }
+      ]
+    },
+    {
+      "id": "friends_13",
+      "kind": "core",
+      "prompt": "The fake VIP line is now longer than the actual audience.",
+      "promptVariants": [
+        { "text": "The fake VIP line is now profitable enough that your least qualified friend starts talking about expansion.", "gate": { "requiredModifiers": ["cashflow"] } }
+      ],
+      "resultText": "The room must decide whether to cash out or escalate the lie.",
+      "choices": [
+        { "id": "friends_13_a", "label": "Sell lifetime memberships", "nextNodeId": "friends_19", "resultText": "The room invents premium access to a thing it still does not control." },
+        { "id": "friends_13_b", "label": "Open the barrier and call it community", "nextNodeId": "friends_20", "resultText": "You turn scarcity into vibes and somehow get applause for it." }
+      ]
+    },
+    {
+      "id": "friends_14",
+      "kind": "core",
+      "prompt": "A local council meeting mistakes your crew for an arts initiative and invites you to speak.",
+      "resultText": "The room either secures funding or secures consequences.",
+      "choices": [
+        { "id": "friends_14_a", "label": "Pitch youth outreach through karaoke", "nextNodeId": "friends_21", "resultText": "The room packages chaos as civic healing and watches half the room believe it." },
+        { "id": "friends_14_b", "label": "Demand a permit on the spot", "nextNodeId": "friends_22", "resultText": "The room takes one step too close to actual paperwork and the whole fantasy starts sweating." }
+      ]
+    },
+    {
+      "id": "friends_15",
+      "kind": "audience_intervention",
+      "prompt": "The room stalls so hard that a city hall intern mistakes your confusion for improvisational theater and hands you an emergency parade permit.",
+      "resultText": "Chaos intervenes by making the night official in the worst possible way.",
+      "choices": [
+        { "id": "friends_15_a", "label": "Take the permit and reroute the crowd", "nextNodeId": "friends_13", "resultText": "The room weaponizes accidental paperwork into a moving VIP disaster." },
+        { "id": "friends_15_b", "label": "Use it to force a radio hit", "nextNodeId": "friends_12", "resultText": "You translate bureaucratic confusion directly into airtime." }
+      ]
+    },
+    {
+      "id": "friends_16",
+      "kind": "special_event",
+      "prompt": "A fireworks vendor decides your rooftop nonsense is exactly the kind of energy their brand needs.",
+      "resultText": "The room acquires pyrotechnics it absolutely did not order.",
+      "choices": [
+        { "id": "friends_16_a", "label": "Accept the sponsorship", "nextNodeId": "friends_11", "resultText": "The skyline becomes part of the set whether anyone approved it or not." },
+        { "id": "friends_16_b", "label": "Trade fireworks for radio buzz", "nextNodeId": "friends_12", "resultText": "The room barters spectacle into legitimacy with dangerous efficiency." }
+      ]
+    },
+    {
+      "id": "friends_17",
+      "kind": "wildcard",
+      "prompt": "A marching band on break mistakes your event for their call time and starts tuning up beside the merch table.",
+      "resultText": "The room is forced to upgrade from scam to parade.",
+      "choices": [
+        { "id": "friends_17_a", "label": "Absorb them into the lineup", "nextNodeId": "friends_11", "resultText": "The room acquires brass and confidence at the exact same moment." },
+        { "id": "friends_17_b", "label": "Sell them VIP wristbands", "nextNodeId": "friends_13", "resultText": "You monetize confusion so efficiently it starts to resemble strategy." }
+      ]
+    },
+    {
+      "id": "friends_18",
+      "kind": "ending",
+      "prompt": "By sunrise, half the city swears your illegal rooftop set was the best music festival they've ever attended.",
       "ending": true,
       "choices": []
     },
     {
-      "id": "friends_6",
-      "prompt": "A mall security guard crowns you the worst organized act of the year.",
+      "id": "friends_19",
+      "kind": "ending",
+      "prompt": "You end the night with three cease-and-desists, a waitlist, and one deeply regrettable residency contract.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "friends_20",
+      "kind": "ending",
+      "prompt": "A local paper calls you 'community icons' after witnessing the least organized act of urban bonding on record.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "friends_21",
+      "kind": "ending",
+      "prompt": "The city awards your fake collective a micro-grant and nobody in the group is mature enough to spend it legally.",
+      "ending": true,
+      "choices": []
+    },
+    {
+      "id": "friends_22",
+      "kind": "ending",
+      "prompt": "A mall security task force shuts the whole operation down and still leaves wearing your merch.",
       "ending": true,
       "choices": []
     }

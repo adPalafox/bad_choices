@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+import badChoicesArt from "@/bad_choices.webp";
 import { DoorIcon, PlusIcon } from "@/components/ui-icons";
 import { createSessionId, MAX_PLAYERS, START_MIN_PLAYERS, VOTE_DURATION_SECONDS } from "@/lib/game";
 import { readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
@@ -102,16 +104,34 @@ export function LandingPage({ packs }: LandingPageProps) {
   return (
     <main className="shell landing-shell">
       <section className="hero-card landing-hero">
-        <div className="eyebrow">Social chaos in under 10 minutes</div>
-        <h1>Bad Choices</h1>
-        <p className="hero-copy">
-          Read a ridiculous setup, argue for five seconds, lock a vote, then watch the room
-          blame the majority. Built for friends, dates, teams, Discord calls, and stream chat.
-        </p>
-        <div className="hero-stats">
-          <span>{START_MIN_PLAYERS}-{MAX_PLAYERS} players</span>
-          <span>{VOTE_DURATION_SECONDS}-second rounds</span>
-          <span>3 launch packs</span>
+        <div className="landing-hero-grid">
+          <div className="landing-hero-copy">
+            <div className="eyebrow">Social chaos in under 10 minutes</div>
+            <div className="landing-logo-lockup">
+              <Image
+                className="landing-logo"
+                src={badChoicesArt}
+                alt="Bad Choices logo art"
+                priority
+                sizes="(max-width: 840px) 180px, 220px"
+              />
+              <div className="landing-brand-copy">
+                <h1>
+                  <span>Bad</span>
+                  <span>Choices</span>
+                </h1>
+              </div>
+            </div>
+            <p className="hero-copy">
+              Read a ridiculous setup, argue for five seconds, lock a vote, then watch the room
+              blame the majority. Built for friends, dates, teams, Discord calls, and stream chat.
+            </p>
+            <div className="hero-stats">
+              <span>{START_MIN_PLAYERS}-{MAX_PLAYERS} players</span>
+              <span>{VOTE_DURATION_SECONDS}-second rounds</span>
+              <span>3 launch packs</span>
+            </div>
+          </div>
         </div>
       </section>
 
