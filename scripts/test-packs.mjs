@@ -6,8 +6,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const packsDir = path.join(__dirname, "..", "content", "packs");
 
-const TEMPLATE_IDS = new Set(["scapegoat", "prediction", "confession"]);
+const TEMPLATE_IDS = new Set(["scapegoat", "prediction", "confession", "secret_agenda", "betrayal"]);
 const PRIVATE_INPUT_TYPES = new Set(["player_target", "choice_option"]);
+const SOCIAL_OBJECTS = new Set(["spotlight", "distribution", "hidden_role"]);
+const ASYMMETRY_BEHAVIORS = new Set(["none", "tie_break"]);
 
 function fail(message) {
   throw new Error(message);
@@ -114,6 +116,20 @@ function validateRoundTemplate(pack, node) {
     );
   }
 
+  if (template.socialObject !== undefined) {
+    assert(
+      SOCIAL_OBJECTS.has(template.socialObject),
+      `Pack "${pack.packId}" node "${node.id}" has invalid socialObject "${template.socialObject}".`
+    );
+  }
+
+  if (template.asymmetryBehavior !== undefined) {
+    assert(
+      ASYMMETRY_BEHAVIORS.has(template.asymmetryBehavior),
+      `Pack "${pack.packId}" node "${node.id}" has invalid asymmetryBehavior "${template.asymmetryBehavior}".`
+    );
+  }
+
   validateStringField(template.privatePrompt, `Pack "${pack.packId}" node "${node.id}" roundTemplate.privatePrompt`);
   validateStringField(template.voteIntro, `Pack "${pack.packId}" node "${node.id}" roundTemplate.voteIntro`);
   validateStringField(template.receiptTemplate, `Pack "${pack.packId}" node "${node.id}" roundTemplate.receiptTemplate`);
@@ -124,6 +140,22 @@ function validateRoundTemplate(pack, node) {
       typeof template.betrayalEligible === "boolean",
       `Pack "${pack.packId}" node "${node.id}" roundTemplate.betrayalEligible must be boolean.`
     );
+  }
+
+  if (template.privateOptions !== undefined) {
+    assert(
+      Array.isArray(template.privateOptions) && template.privateOptions.length > 0,
+      `Pack "${pack.packId}" node "${node.id}" privateOptions must be a non-empty array.`
+    );
+
+    const optionIds = new Set();
+
+    for (const option of template.privateOptions) {
+      assert(typeof option.id === "string" && option.id.length > 0, `Pack "${pack.packId}" node "${node.id}" private option id must be a non-empty string.`);
+      assert(typeof option.label === "string" && option.label.length > 0, `Pack "${pack.packId}" node "${node.id}" private option label must be a non-empty string.`);
+      assert(!optionIds.has(option.id), `Pack "${pack.packId}" node "${node.id}" has duplicate private option id "${option.id}".`);
+      optionIds.add(option.id);
+    }
   }
 
   if (template.id === "confession") {
@@ -150,8 +182,34 @@ function validateRoundTemplate(pack, node) {
       }
     } else {
       assert(
-        node.choices.length > 0,
-        `Pack "${pack.packId}" node "${node.id}" confession template must expose public choices or explicit confessionOptions.`
+        node.choices.length > 0 || (template.privateOptions?.length ?? 0) > 0,
+        `Pack "${pack.packId}" node "${node.id}" confession template must expose public choices or explicit private options.`
+      );
+    }
+  } else if (template.id === "secret_agenda") {
+    if (template.privateInputType !== undefined) {
+      assert(
+        template.privateInputType === "choice_option",
+        `Pack "${pack.packId}" node "${node.id}" secret_agenda template must use privateInputType "choice_option".`
+      );
+    }
+
+    assert(
+      node.choices.length > 0 || (template.privateOptions?.length ?? 0) > 0,
+      `Pack "${pack.packId}" node "${node.id}" secret_agenda template must expose public choices or explicit private options.`
+    );
+  } else if (template.id === "betrayal") {
+    if (template.privateInputType !== undefined) {
+      assert(
+        template.privateInputType === "player_target",
+        `Pack "${pack.packId}" node "${node.id}" betrayal template must use privateInputType "player_target".`
+      );
+    }
+
+    if (template.asymmetryBehavior !== undefined) {
+      assert(
+        template.asymmetryBehavior === "tie_break",
+        `Pack "${pack.packId}" node "${node.id}" betrayal template must use tie_break asymmetry.`
       );
     }
   } else {
@@ -161,7 +219,9 @@ function validateRoundTemplate(pack, node) {
         `Pack "${pack.packId}" node "${node.id}" template "${template.id}" must use privateInputType "player_target".`
       );
     }
+  }
 
+  if (template.id !== "confession") {
     assert(
       template.confessionOptions === undefined,
       `Pack "${pack.packId}" node "${node.id}" template "${template.id}" cannot define confessionOptions.`
@@ -318,6 +378,10 @@ function interpolateTemplate(text, spotlight = "someone", option = "something") 
     .replaceAll("{{count}}", "2");
 }
 
+function assertNoTemplateTokens(text, label) {
+  assert(!String(text).includes("{{"), `${label} still contains unresolved template tokens.`);
+}
+
 function createModifierHistory(pack) {
   const events = [];
 
@@ -368,11 +432,30 @@ function getEffectiveTemplate(node) {
   const templateId = node.roundTemplate?.id ?? "scapegoat";
   const privateInputType =
     node.roundTemplate?.privateInputType ??
-    (templateId === "confession" ? "choice_option" : "player_target");
+    (templateId === "confession" || templateId === "secret_agenda" ? "choice_option" : "player_target");
 
   return {
     id: templateId,
     privateInputType
+  };
+}
+
+function buildTemplateResolution(node) {
+  const template = getEffectiveTemplate(node);
+  const privateOptions = node.roundTemplate?.privateOptions ?? node.roundTemplate?.confessionOptions ?? node.choices;
+
+  if (template.privateInputType === "choice_option") {
+    const leading = privateOptions[0] ?? null;
+
+    return {
+      voteIntro: String(node.roundTemplate?.voteIntro ?? ""),
+      leadingLabel: leading?.label ?? null
+    };
+  }
+
+  return {
+    voteIntro: String(node.roundTemplate?.voteIntro ?? ""),
+    leadingLabel: "Spotlight"
   };
 }
 
@@ -386,9 +469,14 @@ function validateRuntimeCompatibility(pack, summary) {
     const effectiveTemplate = getEffectiveTemplate(node);
 
     if (node.roundTemplate) {
-      if (effectiveTemplate.id === "confession") {
-        const options = node.roundTemplate.confessionOptions ?? node.choices;
+      if (effectiveTemplate.id === "confession" || effectiveTemplate.id === "secret_agenda") {
+        const options = node.roundTemplate?.privateOptions ?? node.roundTemplate?.confessionOptions ?? node.choices;
         assert(options.length > 0, `Pack "${pack.packId}" node "${node.id}" confession template has no private options.`);
+      } else if (effectiveTemplate.id === "betrayal") {
+        assert(
+          effectiveTemplate.privateInputType === "player_target",
+          `Pack "${pack.packId}" node "${node.id}" betrayal template must accept player-target private input.`
+        );
       } else {
         assert(
           effectiveTemplate.privateInputType === "player_target",
@@ -414,11 +502,19 @@ function validateRuntimeCompatibility(pack, summary) {
       summary.resolvedStates += 1;
 
       assert(typeof resolvedNode.prompt === "string", `Pack "${pack.packId}" node "${node.id}" prompt did not resolve to a string in ${state.name}.`);
-      interpolateTemplate(resolvedNode.prompt);
+      assertNoTemplateTokens(interpolateTemplate(resolvedNode.prompt), `Pack "${pack.packId}" node "${node.id}" prompt in ${state.name}`);
+      const templateResolution = buildTemplateResolution(node);
+      assertNoTemplateTokens(
+        interpolateTemplate(templateResolution.voteIntro, "Taylor", templateResolution.leadingLabel ?? "something"),
+        `Pack "${pack.packId}" node "${node.id}" voteIntro`
+      );
 
       for (const choice of resolvedNode.choices) {
         assert(typeof choice.label === "string", `Pack "${pack.packId}" node "${node.id}" choice "${choice.id}" label did not resolve to a string in ${state.name}.`);
-        interpolateTemplate(choice.label);
+        assertNoTemplateTokens(
+          interpolateTemplate(choice.label),
+          `Pack "${pack.packId}" node "${node.id}" choice "${choice.id}" label in ${state.name}`
+        );
         summary.choiceEdges += 1;
       }
     }

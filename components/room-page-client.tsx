@@ -16,6 +16,7 @@ import {
   UsersIcon
 } from "@/components/ui-icons";
 import {
+  applyTemplateFallbacks,
   applySpotlightTemplate,
   buildSocialRecapStats,
   buildPostGameArtifact,
@@ -309,7 +310,8 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const siteUrl = typeof window === "undefined" ? "" : window.location.origin;
   const currentNode = state?.currentNode ?? null;
   const currentChoices = useMemo(() => currentNode?.choices ?? [], [currentNode]);
-  const currentRoundContext = state?.currentRoundContext ?? null;
+  const pendingRoundContext = state?.pendingRoundContext ?? null;
+  const resolvedRoundContext = state?.resolvedRoundContext ?? null;
   const totalPrivateSubmissions =
     (state?.privateSubmissions.length ?? 0) +
     (pendingPrivateSelectionId &&
@@ -336,7 +338,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   }, [currentChoices, pendingChoiceId, session?.playerId, state?.votes]);
 
   const socialRecapStats = useMemo(() => (state?.room.phase === "ended" ? buildSocialRecapStats(state) : []), [state]);
-  const spotlightLabel = currentRoundContext?.spotlightLabel ?? state?.lastEvent?.spotlight_label ?? null;
+  const spotlightLabel = resolvedRoundContext?.spotlightLabel ?? state?.lastEvent?.spotlight_label ?? null;
 
   const hasSubmittedPrivate = Boolean(
     me &&
@@ -376,6 +378,9 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
         postGameArtifact.caption,
       pathSteps: eventLabels.map((event) => event.text),
       path: eventLabels.map((event) => event.text).join(" -> "),
+      receiptHighlights: postGameArtifact.receiptHighlights.map((highlight) =>
+        applySpotlightTemplate(highlight, state.events.at(-1)?.spotlight_label ?? null) ?? highlight
+      ),
       shareMessage:
         applySpotlightTemplate(postGameArtifact.shareMessage, state.events.at(-1)?.spotlight_label ?? null) ??
         postGameArtifact.shareMessage
@@ -676,7 +681,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       return "";
     }
 
-    return applySpotlightTemplate(text, spotlightLabel) ?? text;
+    return applyTemplateFallbacks(applySpotlightTemplate(text, spotlightLabel) ?? text, {
+      spotlight: spotlightLabel,
+      option: resolvedRoundContext?.leadingPrivateOptionLabel ?? state?.lastEvent?.leading_private_option_label ?? null
+    }) ?? text;
   }
 
   function renderTextWithSpotlight(text: string | null | undefined, localSpotlightLabel: string | null | undefined) {
@@ -684,7 +692,21 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       return "";
     }
 
-    return applySpotlightTemplate(text, localSpotlightLabel ?? null) ?? text;
+    return applyTemplateFallbacks(applySpotlightTemplate(text, localSpotlightLabel ?? null) ?? text, {
+      spotlight: localSpotlightLabel ?? null,
+      option: resolvedRoundContext?.leadingPrivateOptionLabel ?? state?.lastEvent?.leading_private_option_label ?? null
+    }) ?? text;
+  }
+
+  function renderPrivatePhaseText(text: string | null | undefined) {
+    if (!text) {
+      return "";
+    }
+
+    return applyTemplateFallbacks(text, {
+      spotlight: null,
+      option: pendingRoundContext?.privateOptions[0]?.label ?? null
+    }) ?? text;
   }
 
   function renderPrivateChoiceLabel(optionId: string | null | undefined) {
@@ -692,8 +714,8 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       return "";
     }
 
-    const optionLabel = currentRoundContext?.privateOptions.find((option) => option.id === optionId)?.label ?? optionId;
-    return renderSpotlightText(optionLabel);
+    const optionLabel = pendingRoundContext?.privateOptions.find((option) => option.id === optionId)?.label ?? optionId;
+    return renderPrivatePhaseText(optionLabel);
   }
 
   const revealInstigatorNames = (state?.lastEvent?.instigator_player_ids ?? []).map((playerId) => getPlayerName(playerId));
@@ -855,8 +877,8 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 <div className="stage-header">
                   <div>
                     <div className="section-tag">Secret pick</div>
-                    <h2>{renderSpotlightText(state.currentNode.prompt)}</h2>
-                    <p>{currentRoundContext?.privatePrompt ?? "Who in this room makes this worse?"}</p>
+                    <h2>{renderPrivatePhaseText(state.currentNode.prompt)}</h2>
+                    <p>{renderPrivatePhaseText(pendingRoundContext?.privatePrompt ?? "Who in this room makes this worse?")}</p>
                   </div>
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
@@ -877,14 +899,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 </div>
 
                 <div className="choice-list">
-                  {currentRoundContext?.privateInputType === "choice_option"
-                    ? currentRoundContext.privateOptions.map((option) => {
+                  {pendingRoundContext?.privateInputType === "choice_option"
+                    ? pendingRoundContext.privateOptions.map((option) => {
                         const selected =
-                          (me &&
-                            state.privateSubmissions.some(
-                              (submission) =>
-                                submission.player_id === me.id && submission.selected_option_id === option.id
-                            )) ||
+                          (me && state.privateSubmissions.some((submission) => submission.player_id === me.id)) ||
                           pendingPrivateSelectionId === option.id;
 
                         return (
@@ -936,7 +954,9 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 <p className="helper-text">
                   {hasSubmittedPrivate
                     ? "Secret pick locked. Nobody sees the private read until the room turns it into a public dilemma."
-                    : currentRoundContext?.privateInputType === "choice_option"
+                    : pendingRoundContext?.templateId === "secret_agenda"
+                      ? "Lock a hidden agenda in secret. The room only sees the fallout after public voting."
+                    : pendingRoundContext?.privateInputType === "choice_option"
                       ? "Pick what you would actually do. The room only sees the aggregate once private input closes."
                       : "Choose one player fast. The room only sees the result after private input closes."}
                 </p>
@@ -949,7 +969,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div>
                     <div className="section-tag">Spotlight vote</div>
                     <h2>{renderSpotlightText(state.currentNode.prompt)}</h2>
-                    <p>{renderSpotlightText(currentRoundContext?.voteIntro ?? "Decide how the group commits.")}</p>
+                    <p>{renderSpotlightText(resolvedRoundContext?.voteIntro ?? "Decide how the group commits.")}</p>
                   </div>
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
@@ -969,28 +989,36 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
 
-                {currentRoundContext?.spotlightLabel ? (
+                {resolvedRoundContext?.spotlightLabel ? (
                   <section className="payoff-card">
                     <p className="payoff-kicker">
-                      {currentRoundContext.templateId === "prediction" ? "Predicted player" : "Spotlight"}
+                      {resolvedRoundContext.templateId === "prediction"
+                        ? "Predicted player"
+                        : resolvedRoundContext.templateId === "betrayal"
+                          ? "Public scapegoat"
+                          : "Spotlight"}
                     </p>
-                    <h2 className="payoff-headline">{currentRoundContext.spotlightLabel}</h2>
+                    <h2 className="payoff-headline">{resolvedRoundContext.spotlightLabel}</h2>
                     <p className="payoff-body">
-                      {currentRoundContext.templateId === "prediction"
+                      {resolvedRoundContext.templateId === "prediction"
                         ? "The room privately decided this player should be the one to carry the plan."
-                        : currentRoundContext.privateResolutionType === "silence"
+                        : resolvedRoundContext.templateId === "betrayal"
+                          ? "One player is secretly holding betrayal leverage while this person absorbs the public pressure."
+                        : resolvedRoundContext.privateResolutionType === "silence"
                         ? "Nobody would volunteer, so chaos assigned the pressure."
                         : "The room quietly decided this player should own the fallout."}
                     </p>
                   </section>
                 ) : null}
-                {!currentRoundContext?.spotlightLabel && currentRoundContext?.distributionLine ? (
+                {!resolvedRoundContext?.spotlightLabel && resolvedRoundContext?.distributionLine ? (
                   <section className="payoff-card">
-                    <p className="payoff-kicker">Private read</p>
+                    <p className="payoff-kicker">
+                      {resolvedRoundContext.templateId === "secret_agenda" ? "Hidden agenda" : "Private read"}
+                    </p>
                     <h2 className="payoff-headline">
-                      {currentRoundContext.leadingPrivateOptionLabel ?? "No consensus"}
+                      {resolvedRoundContext.leadingPrivateOptionLabel ?? "No consensus"}
                     </h2>
-                    <p className="payoff-body">{renderSpotlightText(currentRoundContext.distributionLine)}</p>
+                    <p className="payoff-body">{renderSpotlightText(resolvedRoundContext.distributionLine)}</p>
                   </section>
                 ) : null}
 
@@ -1063,7 +1091,11 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <p className="payoff-body">{renderSpotlightText(state.lastEvent.consequence_line)}</p>
                   {state.lastEvent.spotlight_label ? (
                     <p className="payoff-body">
-                      {state.lastEvent.template_id === "prediction" ? "Predicted player" : "Spotlight"}:{" "}
+                      {state.lastEvent.template_id === "prediction"
+                        ? "Predicted player"
+                        : state.lastEvent.template_id === "betrayal"
+                          ? "Public scapegoat"
+                          : "Spotlight"}:{" "}
                       <strong>{state.lastEvent.spotlight_label}</strong>
                     </p>
                   ) : null}
@@ -1081,6 +1113,9 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     Instigators:{" "}
                     <strong>{revealInstigatorNames.length ? revealInstigatorNames.join(", ") : "Chaos only"}</strong>
                   </p>
+                  {state.lastEvent.template_id === "secret_agenda" ? (
+                    <p className="payoff-body">The room carried hidden agendas into the public vote before this landed.</p>
+                  ) : null}
                   <p className="payoff-body">{renderSpotlightText(state.lastEvent.result_text)}</p>
                   <p className="payoff-body">{renderSpotlightText(state.lastEvent.receipt_line)}</p>
                   {state.lastEvent.power_holder_player_id ? (
@@ -1142,6 +1177,18 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                           <span>{state.events.length} rounds</span>
                           <span>{displayArtifact.chaosMoments} chaos events</span>
                         </div>
+                        {displayArtifact.receiptHighlights.length ? (
+                          <div className="artifact-path-block">
+                            <span>Receipts</span>
+                            <div className="artifact-path-steps">
+                              {displayArtifact.receiptHighlights.map((highlight) => (
+                                <span className="artifact-path-step" key={highlight}>
+                                  <strong>{highlight}</strong>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </article>
                       <div className="artifact-actions">
                         <button className="button-secondary" disabled={sharingArtifact} onClick={() => void shareArtifact()} type="button">
@@ -1255,9 +1302,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   {socialRecapStats.map((stat) => (
                     <article className="recap-card recap-card-stat" key={stat.label}>
                       <span>{stat.label}</span>
-                      <strong>
-                        {stat.playerName} · {stat.value}
-                      </strong>
+                      <strong>{stat.valueText}</strong>
                     </article>
                   ))}
                 </div>

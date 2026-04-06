@@ -2,8 +2,10 @@ export type GamePhase = "lobby" | "private_input" | "voting" | "reveal" | "ended
 export type ResolutionType = "majority" | "indecision_tie" | "indecision_no_vote";
 export type ScenarioNodeKind = "core" | "wildcard" | "audience_intervention" | "special_event" | "ending";
 export type SocialResolutionType = "majority" | "split" | "silence";
-export type RoundTemplateId = "scapegoat" | "prediction" | "confession";
+export type RoundTemplateId = "scapegoat" | "prediction" | "confession" | "secret_agenda" | "betrayal";
 export type PrivateInputType = "player_target" | "choice_option";
+export type RoundSocialObject = "spotlight" | "distribution" | "hidden_role";
+export type AsymmetryBehavior = "none" | "tie_break";
 
 export type ModifierGate = {
   requiredModifiers?: string[];
@@ -55,6 +57,9 @@ export type RoundTemplateConfig = {
   voteIntro?: string;
   receiptTemplate?: string;
   distributionIntro?: string;
+  socialObject?: RoundSocialObject;
+  asymmetryBehavior?: AsymmetryBehavior;
+  privateOptions?: PrivateOption[];
   confessionOptions?: PrivateOption[];
   betrayalEligible?: boolean;
 };
@@ -166,11 +171,20 @@ export type GameEventRecord = {
   created_at: string;
 };
 
-export type CurrentRoundContext = {
+export type PendingPrivateRoundContext = {
   templateId: RoundTemplateId;
   privateInputType: PrivateInputType;
   promptKey: string;
   privatePrompt: string;
+  privateOptions: PrivateOption[];
+  socialObject: RoundSocialObject;
+  asymmetryBehavior: AsymmetryBehavior;
+  betrayalActive: boolean;
+};
+
+export type ResolvedPublicRoundContext = {
+  templateId: RoundTemplateId;
+  privateInputType: PrivateInputType;
   voteIntro: string;
   spotlightPlayerId: string | null;
   spotlightLabel: string | null;
@@ -181,6 +195,8 @@ export type CurrentRoundContext = {
   leadingPrivateOptionId: string | null;
   leadingPrivateOptionLabel: string | null;
   distributionLine: string | null;
+  socialObject: RoundSocialObject;
+  asymmetryBehavior: AsymmetryBehavior;
   betrayalActive: boolean;
 };
 
@@ -194,7 +210,8 @@ export type ApiRoomState = {
   currentNode: ScenarioNode | null;
   pendingNode: ScenarioNode | null;
   lastEvent: GameEventRecord | null;
-  currentRoundContext: CurrentRoundContext | null;
+  pendingRoundContext: PendingPrivateRoundContext | null;
+  resolvedRoundContext: ResolvedPublicRoundContext | null;
 };
 
 export type RoomSession = {

@@ -2,16 +2,19 @@ import { getScenarioNode, getScenarioPack } from "@/lib/content";
 import { chooseNextNodeId, resolveScenarioNode } from "@/lib/scenario-engine";
 import type {
   ApiRoomState,
+  AsymmetryBehavior,
   Choice,
-  CurrentRoundContext,
   GameEventRecord,
   GamePhase,
+  PendingPrivateRoundContext,
   PrivateInputType,
   PrivateOption,
   PrivateSubmissionRecord,
   PublicPlayer,
   ResolutionType,
+  ResolvedPublicRoundContext,
   RoundTemplateConfig,
+  RoundSocialObject,
   ScenarioNode,
   SocialPromptConfig,
   SocialResolutionType,
@@ -28,7 +31,7 @@ export const START_MIN_PLAYERS = process.env.NODE_ENV === "production" ? MIN_PLA
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-type ResolvedTemplateContext = CurrentRoundContext & {
+type ResolvedTemplateContext = ResolvedPublicRoundContext & {
   powerHolderPlayerId: string | null;
   powerHolderLabel: string | null;
 };
@@ -50,14 +53,14 @@ export type PostGameArtifact = {
   caption: string;
   path: string;
   pathSteps: string[];
+  receiptHighlights: string[];
   chaosMoments: number;
   shareMessage: string;
 };
 
 export type SocialRecapStat = {
   label: string;
-  playerName: string;
-  value: number;
+  valueText: string;
 };
 
 function hashString(value: string) {
@@ -92,15 +95,67 @@ function buildDefaultSocialPrompt(): SocialPromptConfig {
   };
 }
 
-function buildDefaultRoundTemplate(): RoundTemplateConfig {
-  return {
-    id: "scapegoat",
-    privateInputType: "player_target",
-    privatePrompt: buildDefaultSocialPrompt().prompt,
-    voteIntro: buildDefaultSocialPrompt().voteIntro,
-    receiptTemplate: buildDefaultSocialPrompt().receiptTemplate,
-    betrayalEligible: false
-  };
+function buildDefaultRoundTemplate(templateId: RoundTemplateConfig["id"] = "scapegoat"): RoundTemplateConfig {
+  switch (templateId) {
+    case "prediction":
+      return {
+        id: "prediction",
+        privateInputType: "player_target",
+        privatePrompt: "Who in this room could actually carry this plan?",
+        voteIntro: "The room thinks {{spotlight}} can carry this. Decide how they try.",
+        receiptTemplate: "{{count}} players privately said {{spotlight}} could carry this.",
+        socialObject: "spotlight",
+        asymmetryBehavior: "none",
+        betrayalEligible: false
+      };
+    case "confession":
+      return {
+        id: "confession",
+        privateInputType: "choice_option",
+        privatePrompt: "Privately, what would you actually do?",
+        voteIntro: "Privately, the room leaned {{option}}. Now decide what the group actually commits to.",
+        receiptTemplate: "{{count}} players privately picked {{option}} before the room made it public.",
+        distributionIntro: "{{count}} private votes landed on {{option}} before the room had to commit.",
+        socialObject: "distribution",
+        asymmetryBehavior: "none",
+        betrayalEligible: false
+      };
+    case "secret_agenda":
+      return {
+        id: "secret_agenda",
+        privateInputType: "choice_option",
+        privatePrompt: "Choose the hidden agenda you want to push.",
+        voteIntro: "Hidden agendas are locked. Decide what the room actually commits to.",
+        receiptTemplate: "{{count}} players secretly pushed {{option}} before the public vote landed.",
+        distributionIntro: "{{count}} players quietly pushed {{option}} before the room voted in public.",
+        socialObject: "hidden_role",
+        asymmetryBehavior: "none",
+        betrayalEligible: false
+      };
+    case "betrayal":
+      return {
+        id: "betrayal",
+        privateInputType: "player_target",
+        privatePrompt: "Who in this room should be left holding the bag if this turns ugly?",
+        voteIntro: "The room picked {{spotlight}}. Decide how hard to sell them out.",
+        receiptTemplate: "{{count}} players quietly pushed {{spotlight}} toward the blast radius.",
+        socialObject: "hidden_role",
+        asymmetryBehavior: "tie_break",
+        betrayalEligible: true
+      };
+    case "scapegoat":
+    default:
+      return {
+        id: "scapegoat",
+        privateInputType: "player_target",
+        privatePrompt: buildDefaultSocialPrompt().prompt,
+        voteIntro: buildDefaultSocialPrompt().voteIntro,
+        receiptTemplate: buildDefaultSocialPrompt().receiptTemplate,
+        socialObject: "spotlight",
+        asymmetryBehavior: "none",
+        betrayalEligible: false
+      };
+  }
 }
 
 function interpolateTemplate(
@@ -128,8 +183,27 @@ export function applySpotlightTemplate(text: string | undefined, spotlightLabel:
   return interpolateTemplate(text, { spotlight: spotlightLabel ?? "someone" });
 }
 
+export function applyTemplateFallbacks(
+  text: string | undefined,
+  fields?: {
+    spotlight?: string | null;
+    option?: string | null;
+  }
+) {
+  if (!text) {
+    return text;
+  }
+
+  return interpolateTemplate(text, {
+    spotlight: fields?.spotlight ?? "someone",
+    option: fields?.option ?? "one move",
+    count: 0
+  });
+}
+
 export function getNodeRoundTemplate(node: Pick<ScenarioNode, "roundTemplate" | "socialPrompt" | "choices">) {
-  const baseTemplate = buildDefaultRoundTemplate();
+  const templateId = node.roundTemplate?.id ?? "scapegoat";
+  const baseTemplate = buildDefaultRoundTemplate(templateId);
   const socialPrompt = node.socialPrompt ? { ...buildDefaultSocialPrompt(), ...node.socialPrompt } : null;
   const template = {
     ...baseTemplate,
@@ -143,7 +217,12 @@ export function getNodeRoundTemplate(node: Pick<ScenarioNode, "roundTemplate" | 
     ...template,
     privateInputType:
       template.privateInputType ??
-      (template.id === "confession" ? "choice_option" : "player_target")
+      (template.id === "confession" || template.id === "secret_agenda" ? "choice_option" : "player_target"),
+    socialObject: template.socialObject ?? buildDefaultRoundTemplate(template.id).socialObject ?? "spotlight",
+    asymmetryBehavior:
+      template.asymmetryBehavior ?? buildDefaultRoundTemplate(template.id).asymmetryBehavior ?? "none",
+    betrayalEligible:
+      template.betrayalEligible ?? (template.id === "betrayal" || template.asymmetryBehavior === "tie_break")
   };
 }
 
@@ -152,7 +231,9 @@ function getPrivateOptions(node: ScenarioNode, template: ReturnType<typeof getNo
     return [];
   }
 
-  return template.confessionOptions?.length
+  return template.privateOptions?.length
+    ? template.privateOptions
+    : template.confessionOptions?.length
     ? template.confessionOptions
     : node.choices.map((choice) => ({
         id: choice.id,
@@ -162,7 +243,7 @@ function getPrivateOptions(node: ScenarioNode, template: ReturnType<typeof getNo
 
 export function applyRoundContextToNode(
   node: ScenarioNode | null,
-  roundContext: CurrentRoundContext | null
+  roundContext: ResolvedPublicRoundContext | null
 ): ScenarioNode | null {
   if (!node) {
     return null;
@@ -367,6 +448,17 @@ function buildVoteIntro(
     return "Privately, nobody committed. Now decide what the group actually does.";
   }
 
+  if (template.id === "secret_agenda") {
+    if (resolution.leadingPrivateOptionLabel) {
+      return interpolateTemplate(
+        template.voteIntro ?? "Hidden agendas are locked. Decide whether the room follows {{option}} or rebels against it.",
+        { option: resolution.leadingPrivateOptionLabel }
+      );
+    }
+
+    return "Hidden agendas are locked, but nobody showed a clear lean. Decide what the room actually does.";
+  }
+
   return interpolateTemplate(
     template.voteIntro ?? "The room picked {{spotlight}}. Decide how the group commits.",
     { spotlight: resolution.spotlightLabel }
@@ -377,7 +469,7 @@ function buildDistributionLine(
   template: ReturnType<typeof getNodeRoundTemplate>,
   resolution: SubmissionResolution
 ) {
-  if (template.id !== "confession") {
+  if (template.id !== "confession" && template.id !== "secret_agenda") {
     return null;
   }
 
@@ -386,12 +478,41 @@ function buildDistributionLine(
   }
 
   return interpolateTemplate(
-    template.distributionIntro ?? "{{count}} private votes landed on {{option}} before the room had to commit in public.",
+    template.distributionIntro ??
+      (template.id === "secret_agenda"
+        ? "{{count}} players secretly pushed {{option}} before the room voted in public."
+        : "{{count}} private votes landed on {{option}} before the room had to commit in public."),
     {
       count: resolution.instigatorPlayerIds.length,
       option: resolution.leadingPrivateOptionLabel
     }
   );
+}
+
+function buildPromptKey(template: ReturnType<typeof getNodeRoundTemplate>) {
+  return template.privateInputType === "choice_option" ? `${template.id}_choice` : `${template.id}_nomination`;
+}
+
+export function getPendingRoundContext(
+  room: RoomRecord,
+  node: ScenarioNode | null
+): PendingPrivateRoundContext | null {
+  if (!node || room.phase === "lobby" || room.phase === "ended") {
+    return null;
+  }
+
+  const template = getNodeRoundTemplate(node);
+
+  return {
+    templateId: template.id,
+    privateInputType: template.privateInputType as PrivateInputType,
+    promptKey: buildPromptKey(template),
+    privatePrompt: template.privatePrompt ?? buildDefaultRoundTemplate(template.id).privatePrompt ?? "",
+    privateOptions: getPrivateOptions(node, template),
+    socialObject: template.socialObject as RoundSocialObject,
+    asymmetryBehavior: template.asymmetryBehavior as AsymmetryBehavior,
+    betrayalActive: Boolean(template.betrayalEligible)
+  };
 }
 
 function resolveRoundContext(
@@ -415,8 +536,6 @@ function resolveRoundContext(
   return {
     templateId: template.id,
     privateInputType: template.privateInputType as PrivateInputType,
-    promptKey: template.id === "confession" ? `${template.id}_choice` : `${template.id}_nomination`,
-    privatePrompt: template.privatePrompt ?? buildDefaultRoundTemplate().privatePrompt!,
     voteIntro: buildVoteIntro(template, submissionResolution),
     spotlightPlayerId: submissionResolution.spotlightPlayerId,
     spotlightLabel: submissionResolution.spotlightLabel,
@@ -427,18 +546,20 @@ function resolveRoundContext(
     leadingPrivateOptionId: submissionResolution.leadingPrivateOptionId,
     leadingPrivateOptionLabel: submissionResolution.leadingPrivateOptionLabel,
     distributionLine: buildDistributionLine(template, submissionResolution),
+    socialObject: template.socialObject as RoundSocialObject,
+    asymmetryBehavior: template.asymmetryBehavior as AsymmetryBehavior,
     betrayalActive: Boolean(template.betrayalEligible),
     powerHolderPlayerId: powerHolder?.id ?? null,
     powerHolderLabel: powerHolder?.nickname ?? null
   };
 }
 
-export function getCurrentRoundContext(
+export function getResolvedRoundContext(
   room: RoomRecord,
   node: ScenarioNode | null,
   players: PublicPlayer[],
   privateSubmissions: PrivateSubmissionRecord[]
-): CurrentRoundContext | null {
+): ResolvedPublicRoundContext | null {
   const resolved = resolveRoundContext(room, node, players, privateSubmissions);
 
   if (!resolved) {
@@ -448,8 +569,6 @@ export function getCurrentRoundContext(
   return {
     templateId: resolved.templateId,
     privateInputType: resolved.privateInputType,
-    promptKey: resolved.promptKey,
-    privatePrompt: resolved.privatePrompt,
     voteIntro: resolved.voteIntro,
     spotlightPlayerId: resolved.spotlightPlayerId,
     spotlightLabel: resolved.spotlightLabel,
@@ -460,8 +579,18 @@ export function getCurrentRoundContext(
     leadingPrivateOptionId: resolved.leadingPrivateOptionId,
     leadingPrivateOptionLabel: resolved.leadingPrivateOptionLabel,
     distributionLine: resolved.distributionLine,
+    socialObject: resolved.socialObject,
+    asymmetryBehavior: resolved.asymmetryBehavior,
     betrayalActive: resolved.betrayalActive
   };
+}
+
+export function getPromptKeyForNode(node: ScenarioNode | null) {
+  if (!node) {
+    return null;
+  }
+
+  return buildPromptKey(getNodeRoundTemplate(node));
 }
 
 export function canResolvePrivateInputPhase(
@@ -589,10 +718,13 @@ function buildReceiptLine(
   roundContext: ResolvedTemplateContext,
   instigatorCount: number
 ) {
-  if (template.id === "confession") {
+  if (template.id === "confession" || template.id === "secret_agenda") {
     if (roundContext.leadingPrivateOptionLabel) {
       return interpolateTemplate(
-        template.receiptTemplate ?? "{{count}} players privately picked {{option}} before the public vote flipped the room into action.",
+        template.receiptTemplate ??
+          (template.id === "secret_agenda"
+            ? "{{count}} players secretly pushed {{option}} before the public vote landed."
+            : "{{count}} players privately picked {{option}} before the public vote flipped the room into action."),
         {
           count: instigatorCount,
           option: roundContext.leadingPrivateOptionLabel
@@ -600,7 +732,15 @@ function buildReceiptLine(
       );
     }
 
-    return "Nobody showed their hand privately, so the room had to perform certainty from scratch.";
+    return template.id === "secret_agenda"
+      ? "Nobody showed a clear hidden agenda, so the room had to improvise its betrayal in public."
+      : "Nobody showed their hand privately, so the room had to perform certainty from scratch.";
+  }
+
+  if (template.id === "betrayal" && roundContext.powerHolderLabel) {
+    return roundContext.powerHolderPlayerId && roundContext.powerHolderPlayerId !== roundContext.spotlightPlayerId
+      ? `${roundContext.powerHolderLabel} held the betrayal card while ${roundContext.spotlightLabel} took the visible heat.`
+      : `${roundContext.powerHolderLabel} held the betrayal card while the room made ${roundContext.spotlightLabel} own the fallout.`;
   }
 
   if (roundContext.privateResolutionType === "silence") {
@@ -647,9 +787,11 @@ export function buildEventRecord(
   const optionLabel = roundContext?.leadingPrivateOptionLabel ?? null;
   const consequenceBase = getResolutionLead(resolutionType, winningChoice);
   const consequenceLine =
-    template.id === "confession"
+    template.id === "confession" || template.id === "secret_agenda"
       ? `${consequenceBase} The room had privately leaned "${optionLabel ?? "something else"}" before committing in public.`
-      : `${consequenceBase} ${spotlightLabel ?? "Someone"} now owns the fallout.`;
+      : template.id === "betrayal"
+        ? `${consequenceBase} ${spotlightLabel ?? "Someone"} takes the blame while someone else quietly held the knife.`
+        : `${consequenceBase} ${spotlightLabel ?? "Someone"} now owns the fallout.`;
   const resultText =
     interpolateTemplate(
       winningChoice.resultText ?? node.resultText ?? `Everyone commits to "${winningChoice.label}" and pays for it immediately.`,
@@ -687,8 +829,6 @@ export function buildEventRecord(
       roundContext ?? {
         templateId: template.id,
         privateInputType: template.privateInputType as PrivateInputType,
-        promptKey: template.id,
-        privatePrompt: template.privatePrompt ?? "",
         voteIntro: template.voteIntro ?? "",
         spotlightPlayerId: null,
         spotlightLabel: null,
@@ -699,6 +839,8 @@ export function buildEventRecord(
         leadingPrivateOptionId: null,
         leadingPrivateOptionLabel: null,
         distributionLine: null,
+        socialObject: template.socialObject as RoundSocialObject,
+        asymmetryBehavior: template.asymmetryBehavior as AsymmetryBehavior,
         betrayalActive: Boolean(template.betrayalEligible),
         powerHolderPlayerId: null,
         powerHolderLabel: null
@@ -811,7 +953,8 @@ export function buildPostGameArtifact(state: ApiRoomState): PostGameArtifact {
   const path = pathSegments.join(" -> ");
   const chaosMoments = state.events.filter((event) => event.resolution_type !== "majority").length;
   const headline = state.currentNode?.prompt ?? "The room survived, technically.";
-  const caption = buildChaosLine(chaosMoments);
+  const socialRecap = buildSocialRecapStats(state);
+  const caption = socialRecap[0]?.valueText ?? buildChaosLine(chaosMoments);
   const subhead = `${state.pack.title} | ${players} players | ${rounds} decisions`;
   const shareMessage = `We just imploded our way through "${state.pack.title}" in Bad Choices. ${headline}`;
 
@@ -821,6 +964,7 @@ export function buildPostGameArtifact(state: ApiRoomState): PostGameArtifact {
     caption,
     path,
     pathSteps: pathSegments,
+    receiptHighlights: socialRecap.slice(0, 3).map((stat) => `${stat.label}: ${stat.valueText}`),
     chaosMoments,
     shareMessage
   };
@@ -832,7 +976,22 @@ export function buildSocialRecapStats(state: ApiRoomState): SocialRecapStat[] {
   const spotlightCounts = new Map<string, number>();
   const trustCounts = new Map<string, number>();
   const sacrificeCounts = new Map<string, number>();
+  const misreadCounts = new Map<string, number>();
   const powerRounds = new Map<string, number>();
+  let strongestConfession:
+    | {
+        label: string;
+        count: number;
+      }
+    | null = null;
+  let biggestMismatch:
+    | {
+        round: number;
+        privateLabel: string;
+        publicLabel: string;
+        weight: number;
+      }
+    | null = null;
 
   for (const event of state.events) {
     if (event.spotlight_player_id) {
@@ -845,6 +1004,18 @@ export function buildSocialRecapStats(state: ApiRoomState): SocialRecapStat[] {
 
     if (event.template_id === "scapegoat" && event.spotlight_player_id) {
       sacrificeCounts.set(event.spotlight_player_id, (sacrificeCounts.get(event.spotlight_player_id) ?? 0) + 1);
+    }
+
+    if (event.template_id === "betrayal" && event.spotlight_player_id) {
+      sacrificeCounts.set(event.spotlight_player_id, (sacrificeCounts.get(event.spotlight_player_id) ?? 0) + 1);
+    }
+
+    if (
+      event.template_id === "prediction" &&
+      event.spotlight_player_id &&
+      (event.private_resolution_type !== "majority" || event.resolution_type !== "majority")
+    ) {
+      misreadCounts.set(event.spotlight_player_id, (misreadCounts.get(event.spotlight_player_id) ?? 0) + 1);
     }
 
     for (const [key, count] of Object.entries(event.private_vote_snapshot ?? {})) {
@@ -860,35 +1031,84 @@ export function buildSocialRecapStats(state: ApiRoomState): SocialRecapStat[] {
     if (event.power_holder_player_id && event.power_altered_outcome) {
       powerRounds.set(event.power_holder_player_id, (powerRounds.get(event.power_holder_player_id) ?? 0) + 1);
     }
+
+    if (
+      (event.template_id === "confession" || event.template_id === "secret_agenda") &&
+      event.leading_private_option_label
+    ) {
+      const leanCount = Number(
+        (event.leading_private_option_id && event.private_vote_snapshot?.[event.leading_private_option_id]) ?? 0
+      );
+
+      if (!strongestConfession || leanCount > strongestConfession.count) {
+        strongestConfession = {
+          label: `Round ${event.round} leaned ${event.leading_private_option_label}`,
+          count: leanCount
+        };
+      }
+    }
+
+    if (
+      (event.template_id === "confession" || event.template_id === "secret_agenda") &&
+      event.leading_private_option_label &&
+      event.leading_private_option_id &&
+      event.leading_private_option_id !== event.selected_choice_id
+    ) {
+      const mismatchWeight = Number(event.private_vote_snapshot?.[event.leading_private_option_id] ?? 0);
+
+      if (!biggestMismatch || mismatchWeight > biggestMismatch.weight) {
+        biggestMismatch = {
+          round: event.round,
+          privateLabel: event.leading_private_option_label,
+          publicLabel: event.selected_choice_label,
+          weight: mismatchWeight
+        };
+      }
+    }
   }
 
   const players = state.players;
 
-  function topPlayer(map: Map<string, number>, label: string, selectLowest = false): SocialRecapStat {
+  function topPlayer(map: Map<string, number>, label: string): SocialRecapStat {
     const ranked = players
       .map((player) => ({
         playerName: player.nickname,
         value: map.get(player.id) ?? 0
       }))
       .sort(
-        (left, right) =>
-          (selectLowest ? left.value - right.value : right.value - left.value) ||
-          left.playerName.localeCompare(right.playerName)
+        (left, right) => right.value - left.value || left.playerName.localeCompare(right.playerName)
       );
     const winner = ranked[0] ?? { playerName: "Nobody", value: 0 };
 
     return {
       label,
-      playerName: winner.playerName,
-      value: winner.value
+      valueText: winner.value > 0 ? `${winner.playerName} · ${winner.value}` : "Nobody · 0"
     };
   }
 
-  return [
+  const stats: SocialRecapStat[] = [
     topPlayer(blameCounts, "Most blamed player"),
     topPlayer(instigatorCounts, "Biggest chaos instigator"),
     topPlayer(trustCounts, "Most trusted player"),
+    topPlayer(spotlightCounts, "Most spotlighted player"),
     topPlayer(sacrificeCounts, "Most often sacrificed"),
+    topPlayer(misreadCounts, "Most misread player"),
     topPlayer(powerRounds, "Hidden power rounds")
   ];
+
+  if (strongestConfession) {
+    stats.push({
+      label: "Strongest confession lean",
+      valueText: `${strongestConfession.label} · ${strongestConfession.count} private votes`
+    });
+  }
+
+  if (biggestMismatch) {
+    stats.push({
+      label: "Biggest public/private mismatch",
+      valueText: `Round ${biggestMismatch.round} · leaned ${biggestMismatch.privateLabel}, did ${biggestMismatch.publicLabel}`
+    });
+  }
+
+  return stats;
 }

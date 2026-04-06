@@ -11,9 +11,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const targetPlayerId = body.targetPlayerId ? String(body.targetPlayerId).trim() : undefined;
     const optionId = body.optionId ? String(body.optionId).trim() : undefined;
 
-    if (!sessionId || !playerId || (!targetPlayerId && !optionId)) {
+    if (!sessionId || !playerId) {
       return NextResponse.json(
-        { error: "Session, player, and a private selection are required." },
+        { error: "Session and player are required." },
+        { status: 400 }
+      );
+    }
+
+    if ((targetPlayerId && optionId) || (!targetPlayerId && !optionId)) {
+      return NextResponse.json(
+        { error: "Submit exactly one private selection." },
         { status: 400 }
       );
     }

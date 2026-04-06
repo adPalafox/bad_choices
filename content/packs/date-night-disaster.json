@@ -93,6 +93,12 @@
       "kind": "core",
       "prompt": "Your date asks for a second line and the violinist is still somehow following you.",
       "resultText": "The room can either lock in the charm or collapse under witness pressure.",
+      "roundTemplate": {
+        "id": "prediction",
+        "privatePrompt": "Who in this room could somehow keep this date alive for one more terrible minute?",
+        "voteIntro": "The room thinks {{spotlight}} can still improvise romance here. Decide how they try.",
+        "receiptTemplate": "{{count}} players privately said {{spotlight}} could keep the bit alive."
+      },
       "choices": [
         { "id": "date_7_a", "label": "Invent a destiny anecdote", "nextNodeId": "date_12", "resultText": "The room manufactures history like it can be fact-checked later." },
         { "id": "date_7_b", "label": "Pretend this is all a surprise flash mob", "nextNodeId": "date_14", "resultText": "The room expands one lie into a full production." }
@@ -131,6 +137,13 @@
       "kind": "core",
       "prompt": "The manager appears holding a comped tiramisu and a concern for public decorum.",
       "resultText": "The room chooses between apology theater and louder cake crime.",
+      "roundTemplate": {
+        "id": "secret_agenda",
+        "privatePrompt": "Choose the hidden agenda you want to push before the room goes public.",
+        "voteIntro": "Hidden agendas are locked. Decide what this date-night disaster officially becomes.",
+        "receiptTemplate": "{{count}} players secretly pushed {{option}} before the room performed confidence.",
+        "distributionIntro": "{{count}} private reads pushed {{option}} before anyone talked to the manager."
+      },
       "choices": [
         { "id": "date_10_a", "label": "Turn the apology into a toast", "nextNodeId": "date_11", "resultText": "The room mistakes consequences for a setup line." },
         { "id": "date_10_b", "label": "Escalate to dessert tasting menu", "nextNodeId": "date_14", "resultText": "The room responds to scrutiny with sugar-fueled ambition." }
@@ -145,8 +158,10 @@
       ],
       "resultText": "The room chooses whether to cross the line or fully erase it.",
       "roundTemplate": {
-        "id": "scapegoat",
-        "betrayalEligible": true
+        "id": "betrayal",
+        "privatePrompt": "Who in this room should take the fall if this fake engagement becomes public history?",
+        "voteIntro": "The room picked {{spotlight}}. Decide how hard to lock them into the lie.",
+        "receiptTemplate": "{{count}} players quietly pushed {{spotlight}} toward the engagement fallout."
       },
       "choices": [
         { "id": "date_11_a", "label": "Produce a fake timeline of your love story", "nextNodeId": "date_18", "resultText": "The room tells a complete relationship origin story with zero supporting evidence." },
@@ -172,6 +187,13 @@
         { "text": "The dessert tower diplomacy attracts a local food influencer who calls your chemistry 'deeply suspicious, but watchable.'", "gate": { "requiredModifiers": ["dessert_chaos"] } }
       ],
       "resultText": "The room chooses whether to become iconic or litigable.",
+      "roundTemplate": {
+        "id": "confession",
+        "privatePrompt": "Privately, what would you actually do once the influencer locks onto the table?",
+        "voteIntro": "Privately, the room leaned {{option}}. Now decide what the whole table actually commits to.",
+        "receiptTemplate": "{{count}} players privately picked {{option}} before the room made it content.",
+        "distributionIntro": "{{count}} private reads clustered around {{option}} before the influencer hit post."
+      },
       "choices": [
         { "id": "date_13_a", "label": "Lean into couple branding", "nextNodeId": "date_20", "resultText": "The room productizes flirtation at alarming speed." },
         { "id": "date_13_b", "label": "Offer the influencer first dance rights", "nextNodeId": "date_22", "resultText": "The room turns dinner into a multi-party spectacle." }

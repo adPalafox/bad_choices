@@ -83,6 +83,12 @@
       "kind": "core",
       "prompt": "A rival busker demands a dance battle for custody of the karaoke machine.",
       "resultText": "The room weaponizes rhythm or petty legal theory.",
+      "roundTemplate": {
+        "id": "prediction",
+        "privatePrompt": "Who in this room would absolutely overcommit to this dance battle?",
+        "voteIntro": "The room thinks {{spotlight}} can sell this showdown. Decide how they try.",
+        "receiptTemplate": "{{count}} players privately said {{spotlight}} would escalate this custody battle best."
+      },
       "choices": [
         { "id": "friends_6_a", "label": "Battle for ownership", "nextNodeId": "friends_11", "resultText": "The room treats public humiliation like binding contract law.", "effects": [{ "type": "add_modifier", "modifierId": "ego" }] },
         { "id": "friends_6_b", "label": "Make the rival an opener", "nextNodeId": "friends_13", "resultText": "The room rebrands a feud as collaborative curation.", "effects": [{ "type": "add_modifier", "modifierId": "official" }] }
@@ -134,6 +140,13 @@
       "kind": "core",
       "prompt": "Fans demand afterparty coordinates and assume you already rented a venue.",
       "resultText": "The room scrambles to turn confidence into a location.",
+      "roundTemplate": {
+        "id": "secret_agenda",
+        "privatePrompt": "Choose the hidden agenda you want to push before everyone votes.",
+        "voteIntro": "Hidden agendas are locked. Decide which lie the room actually commits to.",
+        "receiptTemplate": "{{count}} players secretly pushed {{option}} before the room voted in public.",
+        "distributionIntro": "{{count}} players quietly pushed {{option}} before the room had to go public."
+      },
       "choices": [
         { "id": "friends_10_a", "label": "Hijack a community radio station", "nextNodeId": "friends_12", "resultText": "The room mistakes emergency access for a booking arrangement.", "effects": [{ "type": "add_modifier", "modifierId": "viral" }] },
         { "id": "friends_10_b", "label": "Build a fake VIP queue", "nextNodeId": "friends_13", "resultText": "Scarcity appears out of nowhere and people line up to experience it." }
@@ -148,8 +161,10 @@
       ],
       "resultText": "The room chooses between legacy and immediate legal consequences.",
       "roundTemplate": {
-        "id": "scapegoat",
-        "betrayalEligible": true
+        "id": "betrayal",
+        "privatePrompt": "Who in this room should take the fall if the rooftop set gets shut down?",
+        "voteIntro": "The room picked {{spotlight}}. Decide exactly how brutally to commit them to this rooftop lie.",
+        "receiptTemplate": "{{count}} players quietly pushed {{spotlight}} toward the rooftop fallout."
       },
       "choices": [
         { "id": "friends_11_a", "label": "Play until sunrise", "nextNodeId": "friends_18", "resultText": "The room commits to myth-making with zero exit strategy." },
@@ -185,6 +200,13 @@
       "kind": "core",
       "prompt": "A local council meeting mistakes your crew for an arts initiative and invites you to speak.",
       "resultText": "The room either secures funding or secures consequences.",
+      "roundTemplate": {
+        "id": "confession",
+        "privatePrompt": "Privately, what would you actually do once city officials buy the bit?",
+        "voteIntro": "Privately, the room leaned {{option}}. Now decide what the whole group says out loud.",
+        "receiptTemplate": "{{count}} players privately picked {{option}} before the room made it civic policy.",
+        "distributionIntro": "{{count}} private reads clustered around {{option}} before anyone grabbed the mic."
+      },
       "choices": [
         { "id": "friends_14_a", "label": "Pitch youth outreach through karaoke", "nextNodeId": "friends_21", "resultText": "The room packages chaos as civic healing and watches half the room believe it." },
         { "id": "friends_14_b", "label": "Demand a permit on the spot", "nextNodeId": "friends_22", "resultText": "The room takes one step too close to actual paperwork and the whole fantasy starts sweating." }

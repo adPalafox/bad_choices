@@ -6,8 +6,10 @@ import {
   canResolveVotingPhase,
   createGameEventInsert,
   createRoomCode,
-  getCurrentRoundContext,
   getNodeRoundTemplate,
+  getPendingRoundContext,
+  getPromptKeyForNode,
+  getResolvedRoundContext,
   getNextPhaseAfterReveal,
   getPhaseDeadline,
   MAX_PLAYERS,
@@ -96,16 +98,16 @@ export async function getRoomState(code: string): Promise<ApiRoomState> {
       joined_at: player.joined_at
     }));
 
-  const currentRoundContext = getCurrentRoundContext(
-    room,
-    rawCurrentNode,
-    publicPlayers,
-    privateSubmissions ?? []
-  );
+  const pendingRoundContext = room.phase === "private_input"
+    ? getPendingRoundContext(room, rawCurrentNode)
+    : null;
+  const resolvedRoundContext =
+    room.phase === "voting" || room.phase === "reveal" || room.phase === "ended"
+      ? getResolvedRoundContext(room, rawCurrentNode, publicPlayers, privateSubmissions ?? [])
+      : null;
   const currentNode = room.phase === "private_input"
     ? rawCurrentNode
-    : applyRoundContextToNode(rawCurrentNode, currentRoundContext);
-
+    : applyRoundContextToNode(rawCurrentNode, resolvedRoundContext);
   return {
     room,
     pack: getScenarioPack(room.scenario_pack),
@@ -116,7 +118,19 @@ export async function getRoomState(code: string): Promise<ApiRoomState> {
     currentNode,
     pendingNode,
     lastEvent: events?.at(-1) ?? null,
-    currentRoundContext
+    pendingRoundContext,
+    resolvedRoundContext
+  };
+}
+
+export function sanitizeRoomStateForClient(state: ApiRoomState): ApiRoomState {
+  return {
+    ...state,
+    privateSubmissions: state.privateSubmissions.map((submission) => ({
+      ...submission,
+      target_player_id: null,
+      selected_option_id: null
+    }))
   };
 }
 
@@ -363,20 +377,33 @@ export async function submitPrivateInput(
   }
 
   const template = getNodeRoundTemplate(state.currentNode);
-  const promptKey = state.currentRoundContext?.promptKey ?? "spotlight_nomination";
+  const promptKey = getPromptKeyForNode(state.currentNode) ?? "spotlight_nomination";
   let targetPlayerId: string | null = null;
   let optionId: string | null = null;
 
+  if (input.targetPlayerId && input.optionId) {
+    throw new Error("Submit either a player target or an option, not both.");
+  }
+
   if (template.privateInputType === "player_target") {
+    if (input.optionId) {
+      throw new Error("This round only accepts player nominations.");
+    }
+
     targetPlayerId = String(input.targetPlayerId ?? "").trim() || null;
 
     if (!targetPlayerId || !state.players.find((entry) => entry.id === targetPlayerId)) {
       throw new Error("Selected player is not available.");
     }
   } else {
-    optionId = String(input.optionId ?? "").trim() || null;
+    if (input.targetPlayerId) {
+      throw new Error("This round only accepts option-based private input.");
+    }
 
-    if (!optionId || !state.currentRoundContext?.privateOptions.some((option) => option.id === optionId)) {
+    optionId = String(input.optionId ?? "").trim() || null;
+    const validOptions = state.pendingRoundContext?.privateOptions ?? [];
+
+    if (!optionId || !validOptions.some((option) => option.id === optionId)) {
       throw new Error("Selected option is not available.");
     }
   }

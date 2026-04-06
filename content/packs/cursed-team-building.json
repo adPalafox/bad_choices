@@ -83,6 +83,12 @@
       "kind": "core",
       "prompt": "The goose snaps at a vice president and morale skyrockets for reasons nobody can defend.",
       "resultText": "The room weaponizes the bird or tries to operationalize it.",
+      "roundTemplate": {
+        "id": "prediction",
+        "privatePrompt": "Who in this room would absolutely overcommit to a goose-led org chart?",
+        "voteIntro": "The room thinks {{spotlight}} can sell the goose strategy. Decide how they try.",
+        "receiptTemplate": "{{count}} players privately said {{spotlight}} could escalate the goose problem best."
+      },
       "choices": [
         { "id": "team_6_a", "label": "Put the goose in charge of feedback", "nextNodeId": "team_11", "resultText": "The room outsources truth-telling to wildlife.", "effects": [{ "type": "add_modifier", "modifierId": "goose_authority" }] },
         { "id": "team_6_b", "label": "Draft a goose escalation ladder", "nextNodeId": "team_13", "resultText": "The room invents process for situations it should have prevented." }
@@ -134,6 +140,13 @@
         { "text": "One sincere toast makes everyone briefly believe this offsite is the start of a culture turnaround, which is deeply dangerous.", "gate": { "requiredModifiers": ["morale_spike"] } }
       ],
       "resultText": "The room now has optimism to misuse.",
+      "roundTemplate": {
+        "id": "secret_agenda",
+        "privatePrompt": "Choose the hidden agenda you want to push before leadership notices.",
+        "voteIntro": "Hidden agendas are locked. Decide what the team officially does with this optimism.",
+        "receiptTemplate": "{{count}} players secretly pushed {{option}} before the team made it public.",
+        "distributionIntro": "{{count}} private reads clustered around {{option}} before the team had to choose out loud."
+      },
       "choices": [
         { "id": "team_10_a", "label": "Open a vulnerable sharing circle", "nextNodeId": "team_11", "resultText": "The room creates a feelings arena directly beside a live goose." },
         { "id": "team_10_b", "label": "Pitch a permanent offsite ritual", "nextNodeId": "team_14", "resultText": "The room tries to institutionalize the worst day of the quarter." }
@@ -145,8 +158,10 @@
       "prompt": "Leadership asks for a closing statement before anyone is allowed to leave the offsite.",
       "resultText": "The room can still end this badly, or historically badly.",
       "roundTemplate": {
-        "id": "scapegoat",
-        "betrayalEligible": true
+        "id": "betrayal",
+        "privatePrompt": "Who in this room should eat the blame if leadership makes this official?",
+        "voteIntro": "The room picked {{spotlight}}. Decide how hard to lock them into the closing statement.",
+        "receiptTemplate": "{{count}} players quietly pushed {{spotlight}} toward the executive fallout."
       },
       "choices": [
         { "id": "team_11_a", "label": "Declare the goose a leadership framework", "nextNodeId": "team_18", "resultText": "The room translates animal chaos into executive language and nobody stops it." },
@@ -172,6 +187,13 @@
         { "text": "Operations discovers your side process, but leadership has already begun calling it a courageous experiment.", "gate": { "requiredModifiers": ["executive_cover"] } }
       ],
       "resultText": "The room chooses between punishment, paperwork, and absurd success.",
+      "roundTemplate": {
+        "id": "confession",
+        "privatePrompt": "Privately, what would you actually do once operations comes looking?",
+        "voteIntro": "Privately, the room leaned {{option}}. Now decide what the team publicly commits to.",
+        "receiptTemplate": "{{count}} players privately picked {{option}} before the team answered operations.",
+        "distributionIntro": "{{count}} private reads clustered around {{option}} before operations got a response."
+      },
       "choices": [
         { "id": "team_13_a", "label": "Bury them in documentation", "nextNodeId": "team_19", "resultText": "The room answers scrutiny with more forms than anyone can absorb." },
         { "id": "team_13_b", "label": "Invite ops into the chaos", "nextNodeId": "team_20", "resultText": "The room widens the blast radius and calls it alignment." }
