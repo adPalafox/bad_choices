@@ -82,16 +82,18 @@ export async function waitForCurrentNode(page: Page, code: string, nodeId: strin
 
 export async function createRoom(host: TestPlayer, packTitle: string) {
   await host.page.goto("/");
-  await host.page.getByRole("tab", { name: "Create room" }).click();
-  await host.page.getByTestId("host-name-input").fill(host.name);
+  const createForm = host.page.getByTestId("create-room-form");
+
+  await expect(createForm).toBeVisible();
+  await createForm.getByTestId("host-name-input").fill(host.name);
   const packId = PACK_IDS[packTitle];
 
   if (!packId) {
     throw new Error(`Unknown pack title: ${packTitle}`);
   }
 
-  await host.page.getByTestId("pack-select").selectOption(packId);
-  await host.page.getByTestId("create-room-submit").click();
+  await createForm.getByTestId("pack-select").selectOption(packId);
+  await createForm.getByTestId("create-room-submit").click();
   await host.page.waitForURL(/\/room\/[A-Z0-9]{4}$/u);
 
   const roomCode = host.page.url().split("/").at(-1)?.toUpperCase();
