@@ -194,10 +194,21 @@ Replayability should come from both authored depth and reusable systems:
 ## Open-source notes
 
 - No accounts are required in the MVP.
-- All story packs are repo-managed content.
+- The source code in this repository is MIT-licensed.
+- Brand assets, image assets, and authored scenario pack content are not covered by MIT and remain reserved as described in [`ASSETS.md`](/Users/adreanpalafox/Developer/bad_choices/ASSETS.md).
 - All writes go through server routes; clients only subscribe to realtime updates and read public state.
 - The current MVP keeps host authority minimal and uses deterministic tie-breaks by choice order.
 - Database changes should be added as new files under `supabase/migrations/`, then applied with `npx supabase db push`.
+
+## Contributing
+
+Contributions are welcome. Read [`CONTRIBUTING.md`](/Users/adreanpalafox/Developer/bad_choices/CONTRIBUTING.md) before opening a pull request.
+
+## License
+
+The source code for this project is licensed under the MIT License. See [`LICENSE`](/Users/adreanpalafox/Developer/bad_choices/LICENSE).
+
+The project name, visual assets, and authored scenario content are reserved unless separately licensed. See [`ASSETS.md`](/Users/adreanpalafox/Developer/bad_choices/ASSETS.md).
 
 ## Validation checklist
 
