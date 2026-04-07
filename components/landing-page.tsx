@@ -175,6 +175,7 @@ export function LandingPage({ packs }: LandingPageProps) {
           <form
             className={`panel landing-card landing-card-join ${mode === "join" ? "focused" : "muted"}`}
             onSubmit={handleJoinRoom}
+            data-testid="join-room-form"
           >
             <div className="section-tag">Join a room</div>
             <h3>Use a code or invite link</h3>
@@ -183,6 +184,7 @@ export function LandingPage({ packs }: LandingPageProps) {
             <label className="field">
               <span>Room code</span>
               <input
+                data-testid="join-code-input"
                 maxLength={4}
                 minLength={4}
                 placeholder="ABCD"
@@ -195,6 +197,7 @@ export function LandingPage({ packs }: LandingPageProps) {
             <label className="field">
               <span>Your nickname</span>
               <input
+                data-testid="join-name-input"
                 maxLength={24}
                 minLength={2}
                 placeholder="Moral Liability"
@@ -204,7 +207,12 @@ export function LandingPage({ packs }: LandingPageProps) {
               />
             </label>
 
-            <button className="button-primary landing-cta" disabled={busy === "join"} type="submit">
+            <button
+              className="button-primary landing-cta"
+              data-testid="join-room-submit"
+              disabled={busy === "join"}
+              type="submit"
+            >
               <span className="button-content">
                 <DoorIcon className="button-icon" />
                 <span>{busy === "join" ? "Joining..." : "Join room"}</span>
@@ -215,6 +223,7 @@ export function LandingPage({ packs }: LandingPageProps) {
           <form
             className={`panel landing-card landing-card-create ${mode === "create" ? "focused" : "muted"}`}
             onSubmit={handleCreateRoom}
+            data-testid="create-room-form"
           >
             <div className="section-tag">Host a room</div>
             <h3>Start fast</h3>
@@ -223,6 +232,7 @@ export function LandingPage({ packs }: LandingPageProps) {
             <label className="field">
               <span>Your nickname</span>
               <input
+                data-testid="host-name-input"
                 maxLength={24}
                 minLength={2}
                 placeholder="Captain Bad Idea"
@@ -234,7 +244,7 @@ export function LandingPage({ packs }: LandingPageProps) {
 
             <label className="field">
               <span>Scenario pack</span>
-              <select value={packId} onChange={(event) => setPackId(event.target.value)}>
+              <select data-testid="pack-select" value={packId} onChange={(event) => setPackId(event.target.value)}>
                 {packs.map((pack) => (
                   <option key={pack.packId} value={pack.packId}>
                     {pack.title} · {pack.theme}
@@ -243,7 +253,12 @@ export function LandingPage({ packs }: LandingPageProps) {
               </select>
             </label>
 
-            <button className="button-ghost" disabled={busy === "create"} type="submit">
+            <button
+              className="button-ghost"
+              data-testid="create-room-submit"
+              disabled={busy === "create"}
+              type="submit"
+            >
               <span className="button-content">
                 <PlusIcon className="button-icon" />
                 <span>{busy === "create" ? "Creating room..." : "Create room"}</span>
