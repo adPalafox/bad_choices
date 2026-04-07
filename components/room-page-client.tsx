@@ -26,6 +26,7 @@ import {
   START_MIN_PLAYERS,
   VOTE_DURATION_SECONDS
 } from "@/lib/game";
+import { didPlayerSelectPrivateOption } from "@/lib/regression-helpers";
 import { readRoomSession, readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import type { ApiRoomState, Choice, RoomSession, ScenarioPack } from "@/lib/types";
@@ -421,6 +422,22 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     phaseDurationSeconds > 0
       ? Math.max(0, Math.min(100, ((phaseDurationSeconds - secondsRemaining) / phaseDurationSeconds) * 100))
       : 0;
+  const showFirstRoundTutorial =
+    state?.room.round === 1 && (state.room.phase === "private_input" || state.room.phase === "voting");
+  const firstRoundTutorial =
+    state?.room.phase === "private_input"
+      ? {
+          label: "Round 1 tutorial",
+          title: "Pick privately who gets spotlighted.",
+          body: "Your pick is hidden. The room only finds out who got singled out once public voting starts."
+        }
+      : state?.room.phase === "voting"
+        ? {
+            label: "Round 1 tutorial",
+            title: "Now vote publicly on what happens.",
+            body: "The private nomination is done. Everyone can now see the public options and decide the fallout together."
+          }
+        : null;
 
   async function handleJoinRoom() {
     setJoinState((current) => ({
@@ -720,6 +737,27 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
 
   const revealInstigatorNames = (state?.lastEvent?.instigator_player_ids ?? []).map((playerId) => getPlayerName(playerId));
   const revealPowerHolderName = getPlayerName(state?.lastEvent?.power_holder_player_id);
+  const revealPickedLabel = state?.lastEvent?.spotlight_label
+    ? state.lastEvent.template_id === "prediction"
+      ? "Predicted player"
+      : state.lastEvent.template_id === "betrayal"
+        ? "Public scapegoat"
+        : "Spotlight"
+    : state?.lastEvent?.template_id === "secret_agenda"
+      ? "Hidden agenda"
+      : "Private read";
+  const revealPickedValue = state?.lastEvent?.spotlight_label
+    ? state.lastEvent.spotlight_label
+    : state?.lastEvent?.leading_private_option_label
+      ? renderTextWithSpotlight(state.lastEvent.leading_private_option_label, state.lastEvent.spotlight_label)
+      : "No consensus";
+  const revealCauseValue = revealInstigatorNames.length ? revealInstigatorNames.join(", ") : "Chaos only";
+  const revealOutcomeValue = state?.lastEvent
+    ? renderSpotlightText(state.lastEvent.selected_choice_label)
+    : "";
+  const revealOutcomeDetail = state?.lastEvent
+    ? renderSpotlightText(state.lastEvent.consequence_line)
+    : "";
 
   if (loading) {
     return <main className="room-shell">Loading room...</main>;
@@ -845,13 +883,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
             {isLobby ? (
               <>
                 <div className="section-tag">How it works</div>
-                <h2>Secret picks, public blame</h2>
+                <h2>Private nomination, public fallout</h2>
                 <ol className="number-list">
-                  <li>Read the scenario beat in under five seconds.</li>
-                  <li>Secretly nominate who makes this worse before the {PRIVATE_INPUT_DURATION_SECONDS}-second clock runs out.</li>
-                  <li>Vote on the spotlight dilemma before the {VOTE_DURATION_SECONDS}-second clock expires.</li>
-                  <li>Watch the reveal name who caused it and who has to wear it.</li>
-                  <li>Repeat until the room reaches a chaotic ending.</li>
+                  <li>Read the setup fast.</li>
+                  <li>Pick privately who gets spotlighted before the {PRIVATE_INPUT_DURATION_SECONDS}-second clock runs out.</li>
+                  <li>Vote publicly on what happens before the {VOTE_DURATION_SECONDS}-second clock expires.</li>
+                  <li>Watch the reveal show who got blamed and how it landed.</li>
                 </ol>
                 {me?.is_host ? (
                   <button
@@ -867,18 +904,29 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         : "Start round one"}
                   </button>
                 ) : (
-                  <p className="helper-text">Waiting for the host to start the chaos.</p>
+                  <p className="helper-text">Waiting for the host to start round one.</p>
                 )}
               </>
             ) : null}
 
             {state.room.phase === "private_input" && state.currentNode ? (
               <>
+                {showFirstRoundTutorial && firstRoundTutorial ? (
+                  <section className="tutorial-banner" aria-label="Round one tutorial">
+                    <p className="tutorial-banner-label">{firstRoundTutorial.label}</p>
+                    <h3>{firstRoundTutorial.title}</h3>
+                    <p>{firstRoundTutorial.body}</p>
+                  </section>
+                ) : null}
                 <div className="stage-header">
                   <div>
-                    <div className="section-tag">Secret pick</div>
+                    <div className="section-tag">Private nomination</div>
                     <h2>{renderPrivatePhaseText(state.currentNode.prompt)}</h2>
-                    <p>{renderPrivatePhaseText(pendingRoundContext?.privatePrompt ?? "Who in this room makes this worse?")}</p>
+                    <p>
+                      {renderPrivatePhaseText(
+                        pendingRoundContext?.privatePrompt ?? "Pick privately who should get spotlighted."
+                      )}
+                    </p>
                   </div>
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
@@ -902,7 +950,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   {pendingRoundContext?.privateInputType === "choice_option"
                     ? pendingRoundContext.privateOptions.map((option) => {
                         const selected =
-                          (me && state.privateSubmissions.some((submission) => submission.player_id === me.id)) ||
+                          didPlayerSelectPrivateOption(state.privateSubmissions, me?.id, option.id) ||
                           pendingPrivateSelectionId === option.id;
 
                         return (
@@ -953,23 +1001,34 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
 
                 <p className="helper-text">
                   {hasSubmittedPrivate
-                    ? "Secret pick locked. Nobody sees the private read until the room turns it into a public dilemma."
+                    ? "Private nomination locked. Nobody sees your pick until the room moves into the public vote."
                     : pendingRoundContext?.templateId === "secret_agenda"
-                      ? "Lock a hidden agenda in secret. The room only sees the fallout after public voting."
+                      ? "Lock a hidden agenda in private. The room only sees the fallout once public voting begins."
                     : pendingRoundContext?.privateInputType === "choice_option"
-                      ? "Pick what you would actually do. The room only sees the aggregate once private input closes."
-                      : "Choose one player fast. The room only sees the result after private input closes."}
+                      ? "Choose privately what you would really do. The room only sees the lean once public voting opens."
+                      : "Choose one player fast. This private nomination decides who gets spotlighted before the public vote."}
                 </p>
               </>
             ) : null}
 
             {state.room.phase === "voting" && state.currentNode ? (
               <>
+                {showFirstRoundTutorial && firstRoundTutorial ? (
+                  <section className="tutorial-banner" aria-label="Round one tutorial">
+                    <p className="tutorial-banner-label">{firstRoundTutorial.label}</p>
+                    <h3>{firstRoundTutorial.title}</h3>
+                    <p>{firstRoundTutorial.body}</p>
+                  </section>
+                ) : null}
                 <div className="stage-header">
                   <div>
-                    <div className="section-tag">Spotlight vote</div>
+                    <div className="section-tag">Public vote</div>
                     <h2>{renderSpotlightText(state.currentNode.prompt)}</h2>
-                    <p>{renderSpotlightText(resolvedRoundContext?.voteIntro ?? "Decide how the group commits.")}</p>
+                    <p>
+                      {renderSpotlightText(
+                        resolvedRoundContext?.voteIntro ?? "The private nomination is in. Decide publicly what happens."
+                      )}
+                    </p>
                   </div>
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
@@ -1052,11 +1111,11 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 <p className="helper-text">
                   {hasVoted
                     ? showLiveVoteCounts
-                      ? "Vote locked. Live counts stay visible for the host while the room decides."
-                      : "Vote locked. Results stay hidden until the choice resolves."
+                      ? "Public vote locked. Live counts stay visible for the host while the room decides."
+                      : "Public vote locked. Results stay hidden until the choice resolves."
                     : showLiveVoteCounts
-                      ? "Pick one fast. Host can monitor the count, nobody else can."
-                      : "Pick one fast. Results stay hidden until the choice resolves."}
+                      ? "Pick one fast. The host can monitor the public count, nobody else can."
+                      : "Pick one fast. This is the public decision about what happens next."}
                 </p>
               </>
             ) : null}
@@ -1084,48 +1143,79 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
                 <section
-                  className={`payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""}`}
+                  className={`payoff-card reveal-payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""}`}
                 >
-                  <p className="payoff-kicker">Winning move</p>
-                  <h2 className="payoff-headline">{renderSpotlightText(state.lastEvent.selected_choice_label)}</h2>
-                  <p className="payoff-body">{renderSpotlightText(state.lastEvent.consequence_line)}</p>
-                  {state.lastEvent.spotlight_label ? (
-                    <p className="payoff-body">
-                      {state.lastEvent.template_id === "prediction"
-                        ? "Predicted player"
-                        : state.lastEvent.template_id === "betrayal"
-                          ? "Public scapegoat"
-                          : "Spotlight"}:{" "}
-                      <strong>{state.lastEvent.spotlight_label}</strong>
-                    </p>
-                  ) : null}
-                  {state.lastEvent.leading_private_option_label ? (
-                    <p className="payoff-body">
-                      Private lean: <strong>{renderTextWithSpotlight(state.lastEvent.leading_private_option_label, state.lastEvent.spotlight_label)}</strong>
-                    </p>
-                  ) : null}
-                  {state.lastEvent.distribution_line ? (
-                    <p className="payoff-body">
-                      {renderTextWithSpotlight(state.lastEvent.distribution_line, state.lastEvent.spotlight_label)}
-                    </p>
-                  ) : null}
-                  <p className="payoff-body">
-                    Instigators:{" "}
-                    <strong>{revealInstigatorNames.length ? revealInstigatorNames.join(", ") : "Chaos only"}</strong>
-                  </p>
-                  {state.lastEvent.template_id === "secret_agenda" ? (
-                    <p className="payoff-body">The room carried hidden agendas into the public vote before this landed.</p>
-                  ) : null}
-                  <p className="payoff-body">{renderSpotlightText(state.lastEvent.result_text)}</p>
-                  <p className="payoff-body">{renderSpotlightText(state.lastEvent.receipt_line)}</p>
-                  {state.lastEvent.power_holder_player_id ? (
-                    <p className="payoff-body">
-                      Hidden power:{" "}
-                      <strong>
-                        {revealPowerHolderName}
-                        {state.lastEvent.power_altered_outcome ? " broke the tie." : " held the betrayal card."}
-                      </strong>
-                    </p>
+                  <p className="payoff-kicker">Reveal</p>
+                  <h2 className="payoff-headline">{revealOutcomeValue}</h2>
+                  <div className="reveal-summary-grid" aria-label="Reveal summary">
+                    <div className="reveal-summary-item">
+                      <span className="reveal-summary-label">{revealPickedLabel}</span>
+                      <strong className="reveal-summary-value">{revealPickedValue}</strong>
+                    </div>
+                    <div className="reveal-summary-item">
+                      <span className="reveal-summary-label">Caused by</span>
+                      <strong className="reveal-summary-value">{revealCauseValue}</strong>
+                    </div>
+                    <div className="reveal-summary-item reveal-summary-item-outcome">
+                      <span className="reveal-summary-label">What happened</span>
+                      <strong className="reveal-summary-value">{revealOutcomeDetail}</strong>
+                    </div>
+                  </div>
+                  {(state.lastEvent.leading_private_option_label ||
+                    state.lastEvent.distribution_line ||
+                    state.lastEvent.template_id === "secret_agenda" ||
+                    state.lastEvent.result_text ||
+                    state.lastEvent.receipt_line ||
+                    state.lastEvent.power_holder_player_id) ? (
+                    <div className="reveal-secondary-details" aria-label="Reveal details">
+                      {state.lastEvent.leading_private_option_label ? (
+                        <p className="reveal-detail-line">
+                          <span>Private lean</span>
+                          <strong>
+                            {renderTextWithSpotlight(
+                              state.lastEvent.leading_private_option_label,
+                              state.lastEvent.spotlight_label
+                            )}
+                          </strong>
+                        </p>
+                      ) : null}
+                      {state.lastEvent.distribution_line ? (
+                        <p className="reveal-detail-line">
+                          <span>Private split</span>
+                          <strong>
+                            {renderTextWithSpotlight(
+                              state.lastEvent.distribution_line,
+                              state.lastEvent.spotlight_label
+                            )}
+                          </strong>
+                        </p>
+                      ) : null}
+                      {state.lastEvent.template_id === "secret_agenda" ? (
+                        <p className="reveal-detail-line">
+                          <span>Secret agenda</span>
+                          <strong>The room carried hidden agendas into the public vote before this landed.</strong>
+                        </p>
+                      ) : null}
+                      {state.lastEvent.result_text ? (
+                        <p className="reveal-detail-line">
+                          <span>Aftermath</span>
+                          <strong>{renderSpotlightText(state.lastEvent.result_text)}</strong>
+                        </p>
+                      ) : null}
+                      <p className="reveal-detail-line">
+                        <span>Receipt</span>
+                        <strong>{renderSpotlightText(state.lastEvent.receipt_line)}</strong>
+                      </p>
+                      {state.lastEvent.power_holder_player_id ? (
+                        <p className="reveal-detail-line">
+                          <span>Hidden power</span>
+                          <strong>
+                            {revealPowerHolderName}
+                            {state.lastEvent.power_altered_outcome ? " broke the tie." : " held the betrayal card."}
+                          </strong>
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                 </section>
                 <div className="vote-bar-group">{renderVoteRows(currentChoices, visibleVoteSnapshot ?? {}, true)}</div>

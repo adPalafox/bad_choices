@@ -18,6 +18,7 @@ import {
   REVEAL_DURATION_SECONDS,
   VOTE_DURATION_SECONDS
 } from "@/lib/game";
+import { canStartRoomWithConnectedPlayers, hasLobbyCapacity } from "@/lib/regression-helpers";
 import { resolveScenarioNode } from "@/lib/scenario-engine";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import type {
@@ -256,12 +257,16 @@ export async function joinRoom(code: string, nickname: string, sessionId: string
     throw new Error("This room has already started.");
   }
 
-  const { count } = await supabase
+  const { data: playersForCapacity, error: capacityError } = await supabase
     .from("players")
-    .select("*", { count: "exact", head: true })
+    .select("connected")
     .eq("room_id", room.id);
 
-  if ((count ?? 0) >= MAX_PLAYERS) {
+  if (capacityError) {
+    throw new Error("Failed to check room capacity.");
+  }
+
+  if (!hasLobbyCapacity(playersForCapacity ?? [], MAX_PLAYERS)) {
     throw new Error("This room is full.");
   }
 
@@ -325,7 +330,7 @@ export async function startRoom(code: string, sessionId: string) {
     .eq("room_id", room.id)
     .returns<PlayerRecord[]>();
 
-  if ((players?.length ?? 0) < START_MIN_PLAYERS) {
+  if (!canStartRoomWithConnectedPlayers(players ?? [], START_MIN_PLAYERS)) {
     throw new Error(`Need at least ${START_MIN_PLAYERS} players to start.`);
   }
 
