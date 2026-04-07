@@ -772,10 +772,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   return (
     <main className={`room-shell ${isLobby ? "mode-lobby" : "mode-game"}`}>
       {isLobby ? (
-        <section className="share-utility panel">
+        <section className="share-utility panel" data-testid="room-code-panel">
           <div className="share-code-block">
             <div className="section-tag">Room code</div>
-            <div className="share-code-value">{state.room.code}</div>
+            <div className="share-code-value" data-testid="room-code-value">{state.room.code}</div>
             <p>Send the code or copy the room link before the host starts.</p>
           </div>
           <div className="share-actions">
@@ -826,7 +826,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       )}
 
       {!me && !waitingForPresenceRestore ? (
-        <section className={`join-shell ${isLobby ? "join-lobby" : "join-inline"}`}>
+        <section className={`join-shell ${isLobby ? "join-lobby" : "join-inline"}`} data-testid="join-room-inline-shell">
           <div className="panel">
             <div className="section-tag">Join this room</div>
             <h2>{isLobby ? "Claim a seat" : "You are not in this room yet"}</h2>
@@ -836,6 +836,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 <label className="field">
                   <span>Nickname</span>
                   <input
+                    data-testid="inline-join-name-input"
                     value={joinState.nickname}
                     maxLength={24}
                     minLength={2}
@@ -850,6 +851,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 </label>
                 <button
                   className="button-primary"
+                  data-testid="inline-join-room-submit"
                   disabled={joinState.busy || joinState.nickname.trim().length < 2}
                   onClick={handleJoinRoom}
                   type="button"
@@ -893,6 +895,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 {me?.is_host ? (
                   <button
                     className="button-primary lobby-start-button"
+                    data-testid="start-round-button"
                     disabled={playerCount < START_MIN_PLAYERS || pendingAction === "start"}
                     onClick={() => postToRoom("/start", {}, { optimisticAction: "start" })}
                     type="button"
@@ -946,7 +949,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
 
-                <div className="choice-list">
+                <div className="choice-list" data-testid="private-choice-list">
                   {pendingRoundContext?.privateInputType === "choice_option"
                     ? pendingRoundContext.privateOptions.map((option) => {
                         const selected =
@@ -956,6 +959,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         return (
                           <button
                             key={option.id}
+                            data-testid={`private-choice-${option.id}`}
                             className={`choice-button ${selected ? "selected" : ""} ${hasSubmittedPrivate && !selected ? "locked" : ""}`}
                             disabled={hasSubmittedPrivate}
                             onClick={() =>
@@ -982,6 +986,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         return (
                           <button
                             key={player.id}
+                            data-testid={`private-choice-${player.id}`}
                             className={`choice-button ${selected ? "selected" : ""} ${hasSubmittedPrivate && !selected ? "locked" : ""}`}
                             disabled={hasSubmittedPrivate}
                             onClick={() =>
@@ -1081,7 +1086,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   </section>
                 ) : null}
 
-                <div className="choice-list">
+                <div className="choice-list" data-testid="public-choice-list">
                   {state.currentNode.choices.map((choice) => {
                     const selected =
                       (me && state.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id)) ||
@@ -1091,6 +1096,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     return (
                       <button
                         key={choice.id}
+                        data-testid={`public-choice-${choice.id}`}
                         className={`choice-button ${selected ? "selected" : ""} ${hasVoted && !selected ? "locked" : ""}`}
                         disabled={hasVoted}
                         onClick={() => postToRoom("/vote", { choiceId: choice.id }, { optimisticChoiceId: choice.id })}
@@ -1143,11 +1149,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
                 <section
+                  data-testid="reveal-panel"
                   className={`payoff-card reveal-payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""}`}
                 >
                   <p className="payoff-kicker">Reveal</p>
                   <h2 className="payoff-headline">{revealOutcomeValue}</h2>
-                  <div className="reveal-summary-grid" aria-label="Reveal summary">
+                  <div className="reveal-summary-grid" aria-label="Reveal summary" data-testid="reveal-summary">
                     <div className="reveal-summary-item">
                       <span className="reveal-summary-label">{revealPickedLabel}</span>
                       <strong className="reveal-summary-value">{revealPickedValue}</strong>
@@ -1235,7 +1242,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     </div>
 
                     <div className="share-artifact-grid">
-                      <article className="artifact-card" aria-label="Post-game recap card" ref={artifactCardRef}>
+                      <article
+                        className="artifact-card"
+                        aria-label="Post-game recap card"
+                        data-testid="artifact-card"
+                        ref={artifactCardRef}
+                      >
                         <div className="artifact-card-topline">
                           <span>{state.pack.title}</span>
                           <span>Room {state.room.code}</span>
@@ -1281,7 +1293,13 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         ) : null}
                       </article>
                       <div className="artifact-actions">
-                        <button className="button-secondary" disabled={sharingArtifact} onClick={() => void shareArtifact()} type="button">
+                        <button
+                          className="button-secondary"
+                          data-testid="share-artifact-button"
+                          disabled={sharingArtifact}
+                          onClick={() => void shareArtifact()}
+                          type="button"
+                        >
                           <span className="button-content">
                             <ShareIcon className="button-icon" />
                             <span>{sharingArtifact ? "Preparing share..." : "Share artifact"}</span>
@@ -1312,6 +1330,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     <div className="ending-actions">
                       <button
                         className="button-primary"
+                        data-testid="rematch-pack-button"
                         disabled={pendingAction === "rematch"}
                         onClick={() => postToRoom("/rematch", {}, { optimisticAction: "rematch" })}
                         type="button"
@@ -1323,6 +1342,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                       </button>
                       <button
                         className="button-secondary"
+                        data-testid="toggle-pack-picker-button"
                         disabled={pendingAction === "rematch"}
                         onClick={() => setShowPackPicker((current) => !current)}
                         type="button"
@@ -1354,6 +1374,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         </label>
                         <button
                           className="button-secondary"
+                          data-testid="switch-pack-button"
                           disabled={pendingAction === "rematch" || nextPackId === state.pack.packId}
                           onClick={() =>
                             postToRoom("/rematch", { packId: nextPackId }, { optimisticAction: "rematch" })
@@ -1430,9 +1451,9 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
             <h3>{isLobby ? state.pack.title : `Room ${state.room.code}`}</h3>
             <p>{isLobby ? state.pack.theme : "Live roster and room controls."}</p>
 
-            <ul className="player-list">
+            <ul className="player-list" data-testid="player-list">
               {state.players.map((player) => (
-                <li key={player.id}>
+                <li data-testid={`player-${player.id}`} key={player.id}>
                   <span>{player.nickname}</span>
                   <span>{player.is_host ? "host" : "crew"}</span>
                 </li>

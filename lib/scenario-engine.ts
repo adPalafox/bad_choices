@@ -11,6 +11,7 @@ import type {
   ScenarioPack,
   TextVariant
 } from "@/lib/types";
+import { buildDetourKey, shouldTakeDetour } from "@/lib/deterministic-rng";
 
 const TEMPLATE_IDS = new Set(["scapegoat", "prediction", "confession", "secret_agenda", "betrayal"]);
 const PRIVATE_INPUT_TYPES = new Set(["player_target", "choice_option"]);
@@ -71,13 +72,14 @@ function applyTextVariants(baseText: string, variants: TextVariant[] | undefined
 function chooseDetourNodeId(
   roomRound: number,
   chance: number | undefined,
-  nodeIds: string[] | undefined
+  nodeIds: string[] | undefined,
+  detourKey: string
 ) {
   if (!nodeIds?.length) {
     return null;
   }
 
-  if (typeof chance === "number" && Math.random() > chance) {
+  if (!shouldTakeDetour(detourKey, chance, `${roomRound}:${nodeIds.join(",")}`)) {
     return null;
   }
 
@@ -185,7 +187,8 @@ export function chooseNextNodeId(
     const interventionNodeId = chooseDetourNodeId(
       roomRound,
       1,
-      currentNode.audienceInterventionNodeIds
+      currentNode.audienceInterventionNodeIds,
+      buildDetourKey(currentNode.id, "audience")
     );
 
     if (interventionNodeId) {
@@ -196,7 +199,8 @@ export function chooseNextNodeId(
   const specialEventNodeId = chooseDetourNodeId(
     roomRound,
     currentNode.specialEventChance,
-    winningChoice.specialEventNodeIds
+    winningChoice.specialEventNodeIds,
+    buildDetourKey(currentNode.id, "special")
   );
 
   if (specialEventNodeId) {
@@ -206,7 +210,8 @@ export function chooseNextNodeId(
   const wildcardNodeId = chooseDetourNodeId(
     roomRound,
     currentNode.wildcardChance,
-    winningChoice.wildcardNodeIds
+    winningChoice.wildcardNodeIds,
+    buildDetourKey(currentNode.id, "wildcard")
   );
 
   if (wildcardNodeId) {

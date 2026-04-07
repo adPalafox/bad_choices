@@ -6,9 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "build:e2e": "node scripts/run-with-e2e-env.mjs next build",
+    "start:e2e": "node scripts/run-with-e2e-env.mjs next start --hostname 127.0.0.1 --port 3000",
     "lint": "eslint .",
     "test:packs": "node scripts/test-packs.mjs",
-    "test:regressions": "node --test tests/regressions.test.ts"
+    "test:regressions": "node --test tests/regressions.test.ts",
+    "test:e2e": "node scripts/run-with-e2e-env.mjs playwright test",
+    "test:e2e:smoke": "node scripts/run-with-e2e-env.mjs playwright test tests/e2e/smoke.spec.ts --project=chromium",
+    "test:e2e:full": "node scripts/run-with-e2e-env.mjs playwright test",
+    "test:ci": "npm run lint && npm run test:regressions && npm run test:packs && npm run build:e2e && npm run test:e2e:smoke"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
@@ -21,5 +27,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }

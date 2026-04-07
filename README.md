@@ -58,6 +58,41 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
 
 6. Open [http://localhost:3000](http://localhost:3000)
 
+## Automated e2e
+
+The browser suite runs the production app (`next build` + `next start`) against a local Supabase stack.
+
+1. Install Playwright browsers:
+
+   ```bash
+   npx playwright install chromium firefox webkit
+   ```
+
+2. Start and reset local Supabase:
+
+   ```bash
+   supabase start
+   supabase db reset --local
+   ```
+
+3. Copy the example env file and replace the key placeholders with the values from `supabase status -o env`:
+
+   ```bash
+   cp .env.e2e.example .env.e2e
+   ```
+
+4. Run the smoke suite:
+
+   ```bash
+   npm run test:e2e:smoke
+   ```
+
+Useful commands:
+
+- `npm run test:e2e`: full Playwright run
+- `npm run test:e2e:full`: Chromium full suite plus Firefox/WebKit smoke
+- `npm run test:ci`: lint, regression tests, pack validation, prod build, and Chromium smoke
+
 ## Core flow
 
 1. Host creates a room and picks a scenario pack.
