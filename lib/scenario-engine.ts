@@ -1,12 +1,21 @@
 import type {
+  AsymmetryBehavior,
   Choice,
   GameEventRecord,
   ModifierGate,
+  PrivateInputType,
+  PrivateOption,
   ResolutionType,
+  RoundSocialObject,
   ScenarioNode,
   ScenarioPack,
   TextVariant
 } from "@/lib/types";
+
+const TEMPLATE_IDS = new Set(["scapegoat", "prediction", "confession", "secret_agenda", "betrayal"]);
+const PRIVATE_INPUT_TYPES = new Set(["player_target", "choice_option"]);
+const SOCIAL_OBJECTS = new Set(["spotlight", "distribution", "hidden_role"]);
+const ASYMMETRY_BEHAVIORS = new Set(["none", "tie_break"]);
 
 type RunState = {
   activeModifiers: Set<string>;
@@ -253,6 +262,147 @@ function getMinimumEndingDepth(pack: ScenarioPack, nodeId: string, depth = 0, se
   return candidateDepths.length ? Math.min(...candidateDepths) : Number.POSITIVE_INFINITY;
 }
 
+function validateStringField(value: string | undefined, label: string) {
+  if (value !== undefined && typeof value !== "string") {
+    throw new Error(`${label} must be a string.`);
+  }
+}
+
+function validatePrivateOptions(
+  options: PrivateOption[] | undefined,
+  pack: ScenarioPack,
+  node: ScenarioNode,
+  label: string
+) {
+  if (options === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(options) || options.length === 0) {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" ${label} must be a non-empty array.`);
+  }
+
+  const optionIds = new Set<string>();
+
+  for (const option of options) {
+    if (typeof option.id !== "string" || option.id.length === 0) {
+      throw new Error(`Pack "${pack.packId}" node "${node.id}" ${label} option id must be a non-empty string.`);
+    }
+
+    if (typeof option.label !== "string" || option.label.length === 0) {
+      throw new Error(`Pack "${pack.packId}" node "${node.id}" ${label} option label must be a non-empty string.`);
+    }
+
+    if (optionIds.has(option.id)) {
+      throw new Error(`Pack "${pack.packId}" node "${node.id}" has duplicate ${label} option id "${option.id}".`);
+    }
+
+    optionIds.add(option.id);
+  }
+}
+
+function validateSocialPrompt(pack: ScenarioPack, node: ScenarioNode) {
+  if (!node.socialPrompt) {
+    return;
+  }
+
+  validateStringField(node.socialPrompt.key, `Pack "${pack.packId}" node "${node.id}" socialPrompt.key`);
+  validateStringField(node.socialPrompt.prompt, `Pack "${pack.packId}" node "${node.id}" socialPrompt.prompt`);
+  validateStringField(node.socialPrompt.voteIntro, `Pack "${pack.packId}" node "${node.id}" socialPrompt.voteIntro`);
+  validateStringField(
+    node.socialPrompt.receiptTemplate,
+    `Pack "${pack.packId}" node "${node.id}" socialPrompt.receiptTemplate`
+  );
+}
+
+function validateRoundTemplate(pack: ScenarioPack, node: ScenarioNode) {
+  const template = node.roundTemplate;
+
+  if (!template) {
+    return;
+  }
+
+  if (node.ending) {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" cannot define roundTemplate on an ending node.`);
+  }
+
+  if (!TEMPLATE_IDS.has(template.id)) {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" has invalid roundTemplate.id "${template.id}".`);
+  }
+
+  if (template.privateInputType !== undefined && !PRIVATE_INPUT_TYPES.has(template.privateInputType)) {
+    throw new Error(
+      `Pack "${pack.packId}" node "${node.id}" has invalid privateInputType "${template.privateInputType}".`
+    );
+  }
+
+  if (template.socialObject !== undefined && !SOCIAL_OBJECTS.has(template.socialObject)) {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" has invalid socialObject "${template.socialObject}".`);
+  }
+
+  if (template.asymmetryBehavior !== undefined && !ASYMMETRY_BEHAVIORS.has(template.asymmetryBehavior)) {
+    throw new Error(
+      `Pack "${pack.packId}" node "${node.id}" has invalid asymmetryBehavior "${template.asymmetryBehavior}".`
+    );
+  }
+
+  validateStringField(template.privatePrompt, `Pack "${pack.packId}" node "${node.id}" roundTemplate.privatePrompt`);
+  validateStringField(template.voteIntro, `Pack "${pack.packId}" node "${node.id}" roundTemplate.voteIntro`);
+  validateStringField(
+    template.receiptTemplate,
+    `Pack "${pack.packId}" node "${node.id}" roundTemplate.receiptTemplate`
+  );
+  validateStringField(
+    template.distributionIntro,
+    `Pack "${pack.packId}" node "${node.id}" roundTemplate.distributionIntro`
+  );
+
+  if (template.betrayalEligible !== undefined && typeof template.betrayalEligible !== "boolean") {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" roundTemplate.betrayalEligible must be boolean.`);
+  }
+
+  validatePrivateOptions(template.privateOptions, pack, node, "privateOptions");
+  validatePrivateOptions(template.confessionOptions, pack, node, "confessionOptions");
+
+  const effectivePrivateInputType: PrivateInputType =
+    template.privateInputType ??
+    (template.id === "confession" || template.id === "secret_agenda" ? "choice_option" : "player_target");
+  const effectiveSocialObject: RoundSocialObject =
+    template.socialObject ?? (template.id === "confession" ? "distribution" : template.id === "secret_agenda" || template.id === "betrayal" ? "hidden_role" : "spotlight");
+  const effectiveAsymmetry: AsymmetryBehavior =
+    template.asymmetryBehavior ?? (template.id === "betrayal" ? "tie_break" : "none");
+
+  if (template.id === "confession" && effectivePrivateInputType !== "choice_option") {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" confession template must use choice_option private input.`);
+  }
+
+  if (template.id === "secret_agenda" && effectivePrivateInputType !== "choice_option") {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" secret_agenda template must use choice_option private input.`);
+  }
+
+  if ((template.id === "scapegoat" || template.id === "prediction" || template.id === "betrayal") && effectivePrivateInputType !== "player_target") {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" template "${template.id}" must use player_target private input.`);
+  }
+
+  if (effectivePrivateInputType === "choice_option" && node.choices.length === 0 && !template.privateOptions?.length && !template.confessionOptions?.length) {
+    throw new Error(
+      `Pack "${pack.packId}" node "${node.id}" choice_option template must expose public choices or explicit private options.`
+    );
+  }
+
+  if (template.id !== "confession" && template.confessionOptions !== undefined && template.privateOptions === undefined) {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" can only use confessionOptions on confession templates.`);
+  }
+
+  if (effectiveSocialObject === "distribution" && effectivePrivateInputType !== "choice_option") {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" distribution socialObject requires choice_option private input.`);
+  }
+
+  if (template.id === "betrayal" && effectiveAsymmetry !== "tie_break") {
+    throw new Error(`Pack "${pack.packId}" node "${node.id}" betrayal template must use tie_break asymmetry.`);
+  }
+}
+
 export function validateScenarioPack(pack: ScenarioPack) {
   const nodeIds = new Set<string>();
   const endingCount = pack.nodes.filter((node) => node.ending).length;
@@ -271,6 +421,9 @@ export function validateScenarioPack(pack: ScenarioPack) {
     if (!node.ending && node.choices.length === 0) {
       throw new Error(`Non-ending node "${node.id}" in pack "${pack.packId}" must define choices.`);
     }
+
+    validateSocialPrompt(pack, node);
+    validateRoundTemplate(pack, node);
 
     const choiceIds = new Set<string>();
 

@@ -1,6 +1,11 @@
-export type GamePhase = "lobby" | "voting" | "reveal" | "ended";
+export type GamePhase = "lobby" | "private_input" | "voting" | "reveal" | "ended";
 export type ResolutionType = "majority" | "indecision_tie" | "indecision_no_vote";
 export type ScenarioNodeKind = "core" | "wildcard" | "audience_intervention" | "special_event" | "ending";
+export type SocialResolutionType = "majority" | "split" | "silence";
+export type RoundTemplateId = "scapegoat" | "prediction" | "confession" | "secret_agenda" | "betrayal";
+export type PrivateInputType = "player_target" | "choice_option";
+export type RoundSocialObject = "spotlight" | "distribution" | "hidden_role";
+export type AsymmetryBehavior = "none" | "tie_break";
 
 export type ModifierGate = {
   requiredModifiers?: string[];
@@ -33,6 +38,32 @@ export type Choice = {
   labelVariants?: TextVariant[];
 };
 
+export type SocialPromptConfig = {
+  key: string;
+  prompt: string;
+  voteIntro: string;
+  receiptTemplate?: string;
+};
+
+export type PrivateOption = {
+  id: string;
+  label: string;
+};
+
+export type RoundTemplateConfig = {
+  id: RoundTemplateId;
+  privateInputType?: PrivateInputType;
+  privatePrompt?: string;
+  voteIntro?: string;
+  receiptTemplate?: string;
+  distributionIntro?: string;
+  socialObject?: RoundSocialObject;
+  asymmetryBehavior?: AsymmetryBehavior;
+  privateOptions?: PrivateOption[];
+  confessionOptions?: PrivateOption[];
+  betrayalEligible?: boolean;
+};
+
 export type ScenarioNode = {
   id: string;
   prompt: string;
@@ -44,6 +75,8 @@ export type ScenarioNode = {
   audienceInterventionNodeIds?: string[];
   wildcardChance?: number;
   specialEventChance?: number;
+  socialPrompt?: SocialPromptConfig;
+  roundTemplate?: RoundTemplateConfig;
   choices: Choice[];
 };
 
@@ -96,6 +129,18 @@ export type VoteRecord = {
   created_at: string;
 };
 
+export type PrivateSubmissionRecord = {
+  id: string;
+  room_id: string;
+  player_id: string;
+  round: number;
+  node_id: string;
+  prompt_key: string;
+  target_player_id: string | null;
+  selected_option_id: string | null;
+  created_at: string;
+};
+
 export type GameEventRecord = {
   id: string;
   room_id: string;
@@ -109,18 +154,64 @@ export type GameEventRecord = {
   resolution_type: ResolutionType;
   resolution_label: string;
   vote_snapshot: Record<string, number>;
+  template_id: RoundTemplateId;
+  spotlight_player_id: string | null;
+  spotlight_label: string | null;
+  private_vote_snapshot: Record<string, number>;
+  instigator_player_ids: string[];
+  private_resolution_type: SocialResolutionType;
+  leading_private_option_id: string | null;
+  leading_private_option_label: string | null;
+  distribution_line: string | null;
+  power_holder_player_id: string | null;
+  power_holder_label: string | null;
+  power_altered_outcome: boolean;
+  consequence_line: string;
+  receipt_line: string;
   created_at: string;
+};
+
+export type PendingPrivateRoundContext = {
+  templateId: RoundTemplateId;
+  privateInputType: PrivateInputType;
+  promptKey: string;
+  privatePrompt: string;
+  privateOptions: PrivateOption[];
+  socialObject: RoundSocialObject;
+  asymmetryBehavior: AsymmetryBehavior;
+  betrayalActive: boolean;
+};
+
+export type ResolvedPublicRoundContext = {
+  templateId: RoundTemplateId;
+  privateInputType: PrivateInputType;
+  voteIntro: string;
+  spotlightPlayerId: string | null;
+  spotlightLabel: string | null;
+  privateVoteSnapshot: Record<string, number>;
+  instigatorPlayerIds: string[];
+  privateResolutionType: SocialResolutionType;
+  privateOptions: PrivateOption[];
+  leadingPrivateOptionId: string | null;
+  leadingPrivateOptionLabel: string | null;
+  distributionLine: string | null;
+  socialObject: RoundSocialObject;
+  asymmetryBehavior: AsymmetryBehavior;
+  betrayalActive: boolean;
 };
 
 export type ApiRoomState = {
   room: RoomRecord;
   pack: ScenarioPack;
   players: PublicPlayer[];
+  privateSubmissions: PrivateSubmissionRecord[];
   votes: VoteRecord[];
   events: GameEventRecord[];
   currentNode: ScenarioNode | null;
   pendingNode: ScenarioNode | null;
   lastEvent: GameEventRecord | null;
+  pendingRoundContext: PendingPrivateRoundContext | null;
+  resolvedRoundContext: ResolvedPublicRoundContext | null;
 };
 
 export type RoomSession = {

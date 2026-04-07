@@ -1,6 +1,6 @@
 # Bad Choices
 
-Bad Choices is a lightweight social web game for fast group decisions. Players join a room with a code, vote on short scenario choices under a timer, and let the majority drag everyone to an ending worth blaming each other for.
+Bad Choices is a lightweight social web game for fast group decisions. Players join a room with a code, secretly nominate the player most likely to make each scenario worse, vote on the public dilemma that nomination creates, and end each round with named blame.
 
 ## MVP included
 
@@ -8,7 +8,7 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
 - Shareable room code and direct room URL
 - Host-controlled room start and rematch
 - Realtime room sync with Supabase
-- Timed voting, instant reveal, and ending recap
+- Timed secret picks, spotlight voting, instant reveal, and ending recap
 - Three replayable starter scenario packs with modifiers, detours, and multiple endings:
   - `chaotic-friends`
   - `date-night-disaster`
@@ -63,9 +63,10 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
 1. Host creates a room and picks a scenario pack.
 2. Players join with a nickname only.
 3. Host starts once at least 3 players are present.
-4. Each round shows a short prompt and timed choices.
-5. The majority vote decides the next branch.
-6. The room hits an ending card and can rematch instantly.
+4. Each round starts with a private nomination prompt.
+5. The room votes on a spotlighted public dilemma.
+6. Reveal assigns outcome, blame, and receipt before the next round.
+7. The room hits an ending card and can rematch instantly.
 
 ## Repo structure
 
@@ -100,6 +101,7 @@ Each node must define:
 - optional `audienceInterventionNodeIds[]`
 - optional `wildcardChance`
 - optional `specialEventChance`
+- optional `socialPrompt`
 
 Each choice must define:
 
@@ -112,6 +114,20 @@ Each choice must define:
 - optional `wildcardNodeIds[]`
 - optional `specialEventNodeIds[]`
 - optional `labelVariants[]`
+
+`socialPrompt` can define:
+
+- `key`
+- `prompt`
+- `voteIntro`
+- optional `receiptTemplate`
+
+Scenario copy can also include spotlight placeholders that are resolved once the private nomination phase ends:
+
+- `{{spotlight}}`
+- `{{they}}`
+- `{{them}}`
+- `{{their}}`
 
 Import the new pack in [`lib/content.ts`](/Users/adreanpalafox/Developer/bad_choices/lib/content.ts) so it appears in the host screen.
 
@@ -153,6 +169,7 @@ Replayability should come from both authored depth and reusable systems:
 - Create room and join from multiple browser tabs
 - Confirm lobby sync works in realtime
 - Start with 3 or more players
-- Verify one vote per player per round
+- Verify one private nomination per player per round
+- Verify one public vote per player per round
 - Verify reveal happens after timer expiry or all votes
 - Verify rematch resets to lobby with the same pack

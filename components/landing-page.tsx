@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -18,14 +18,20 @@ type LandingMode = "join" | "create";
 
 export function LandingPage({ packs }: LandingPageProps) {
   const router = useRouter();
-  const savedNickname = readSavedNickname();
+  const savedNickname = useSyncExternalStore(
+    () => () => undefined,
+    readSavedNickname,
+    () => ""
+  );
   const [mode, setMode] = useState<LandingMode>("join");
-  const [hostName, setHostName] = useState(savedNickname);
-  const [joinName, setJoinName] = useState(savedNickname);
+  const [hostName, setHostName] = useState("");
+  const [joinName, setJoinName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [packId, setPackId] = useState(packs[0]?.packId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const effectiveHostName = hostName || savedNickname;
+  const effectiveJoinName = joinName || savedNickname;
 
   async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,7 +46,7 @@ export function LandingPage({ packs }: LandingPageProps) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        hostName,
+        hostName: effectiveHostName,
         packId,
         sessionId
       })
@@ -58,9 +64,9 @@ export function LandingPage({ packs }: LandingPageProps) {
     writeRoomSession(payload.roomCode, {
       sessionId,
       playerId: payload.playerId,
-      nickname: hostName.trim()
+      nickname: effectiveHostName.trim()
     });
-    writeSavedNickname(hostName);
+    writeSavedNickname(effectiveHostName);
     router.push(`/room/${payload.roomCode}`);
   }
 
@@ -78,7 +84,7 @@ export function LandingPage({ packs }: LandingPageProps) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        nickname: joinName,
+        nickname: effectiveJoinName,
         sessionId
       })
     });
@@ -106,7 +112,7 @@ export function LandingPage({ packs }: LandingPageProps) {
       <section className="hero-card landing-hero">
         <div className="landing-hero-grid">
           <div className="landing-hero-copy">
-            <div className="eyebrow">Social chaos in under 10 minutes</div>
+            <div className="eyebrow">Secret nominations. Public fallout.</div>
             <div className="landing-logo-lockup">
               <Image
                 className="landing-logo"
@@ -123,8 +129,8 @@ export function LandingPage({ packs }: LandingPageProps) {
               </div>
             </div>
             <p className="hero-copy">
-              Read a ridiculous setup, argue for five seconds, lock a vote, then watch the room
-              blame the majority. Built for friends, dates, teams, Discord calls, and stream chat.
+              Pick privately who gets spotlighted, then vote publicly on what happens next.
+              Every round ends with someone wearing the blame in front of the whole room.
             </p>
             <div className="hero-stats">
               <span>{START_MIN_PLAYERS}-{MAX_PLAYERS} players</span>
@@ -138,7 +144,7 @@ export function LandingPage({ packs }: LandingPageProps) {
       <section className="landing-actions">
         <div className="landing-actions-copy">
           <div className="section-tag">Start here</div>
-          <h2>Got a code? Jump in. Starting the chaos? Create a room.</h2>
+          <h2>Got a code? Jump in. Starting a round of secret nominations? Create a room.</h2>
           <p>
             Most players arrive to join a live room, so that path comes first. Hosting stays one tap away.
           </p>
@@ -172,7 +178,7 @@ export function LandingPage({ packs }: LandingPageProps) {
           >
             <div className="section-tag">Join a room</div>
             <h3>Use a code or invite link</h3>
-            <p>Zero login. Enter a nickname, paste the code, and jump straight into the vote.</p>
+            <p>Zero login. Enter a nickname, paste the code, and jump into the private nomination.</p>
 
             <label className="field">
               <span>Room code</span>
@@ -193,7 +199,7 @@ export function LandingPage({ packs }: LandingPageProps) {
                 minLength={2}
                 placeholder="Moral Liability"
                 required
-                value={joinName}
+                value={effectiveJoinName}
                 onChange={(event) => setJoinName(event.target.value)}
               />
             </label>
@@ -212,7 +218,7 @@ export function LandingPage({ packs }: LandingPageProps) {
           >
             <div className="section-tag">Host a room</div>
             <h3>Start fast</h3>
-            <p>Pick a tone, name yourself, and get a room code you can drop into chat instantly.</p>
+            <p>Pick a pack, name yourself, and get a room code you can drop into chat instantly.</p>
 
             <label className="field">
               <span>Your nickname</span>
@@ -221,7 +227,7 @@ export function LandingPage({ packs }: LandingPageProps) {
                 minLength={2}
                 placeholder="Captain Bad Idea"
                 required
-                value={hostName}
+                value={effectiveHostName}
                 onChange={(event) => setHostName(event.target.value)}
               />
             </label>

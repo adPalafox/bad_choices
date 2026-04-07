@@ -14,42 +14,54 @@
       "id": "date_1",
       "kind": "core",
       "prompt": "Halfway through your date, the restaurant lights cut out and a violinist keeps playing.",
-      "resultText": "The room decides how hard to commit to the accidental drama.",
+      "resultText": "{{spotlight}} ends up carrying the accidental drama while the room decides how hard to commit to it.",
+      "socialPrompt": {
+        "key": "spotlight_nomination",
+        "prompt": "Who in this room would make this date way more embarrassing?",
+        "voteIntro": "The room picked {{spotlight}}. Decide what romantic disaster to pin on them.",
+        "receiptTemplate": "{{count}} players said {{spotlight}} would make this date dramatically worse."
+      },
       "choices": [
-        { "id": "date_1_a", "label": "Propose as a bit", "nextNodeId": "date_2", "resultText": "The room commits to the biggest possible joke and instantly makes it everyone's problem.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] },
-        { "id": "date_1_b", "label": "Blame the moon", "nextNodeId": "date_3", "resultText": "You hand full responsibility to the night sky and hope charisma does the rest.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
-        { "id": "date_1_c", "label": "Steal dessert first", "nextNodeId": "date_4", "resultText": "Romance takes a back seat to lava cake theft and a wildly confident spoon plan.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
+        { "id": "date_1_a", "label": "Make {{spotlight}} propose as a bit", "nextNodeId": "date_2", "resultText": "{{spotlight}} commits to the biggest possible joke and instantly makes it everyone's problem.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] },
+        { "id": "date_1_b", "label": "Make {{spotlight}} blame the moon", "nextNodeId": "date_3", "resultText": "{{spotlight}} hands full responsibility to the night sky and hopes charisma does the rest.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_1_c", "label": "Make {{spotlight}} steal dessert first", "nextNodeId": "date_4", "resultText": "{{spotlight}} turns romance into lava cake theft and a wildly confident spoon plan.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
       ]
     },
     {
       "id": "date_2",
       "kind": "core",
-      "prompt": "The next table starts cheering and someone offers to livestream the moment.",
-      "resultText": "The room weaponizes secondhand intimacy.",
+      "prompt": "The next table starts cheering while {{spotlight}} is still visibly in the bit, and someone offers to livestream the moment.",
+      "resultText": "The room weaponizes secondhand intimacy and leaves {{spotlight}} on camera.",
       "choices": [
-        { "id": "date_2_a", "label": "Commit to the speech", "nextNodeId": "date_5", "resultText": "The fake proposal gets so detailed that nobody can tell when the bit ended.", "effects": [{ "type": "add_modifier", "modifierId": "witnesses" }] },
-        { "id": "date_2_b", "label": "Crowdfund the ring", "nextNodeId": "date_6", "resultText": "Nothing kills the mood faster than turning romance into a live fundraiser.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] }
+        { "id": "date_2_a", "label": "Make {{spotlight}} commit to the speech", "nextNodeId": "date_5", "resultText": "{{spotlight}} makes the fake proposal so detailed that nobody can tell when the bit ended.", "effects": [{ "type": "add_modifier", "modifierId": "witnesses" }] },
+        { "id": "date_2_b", "label": "Make {{spotlight}} crowdfund the ring", "nextNodeId": "date_6", "resultText": "{{spotlight}} turns romance into a live fundraiser and kills the mood on contact.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] }
       ]
     },
     {
       "id": "date_3",
       "kind": "core",
-      "prompt": "Your date asks whether this line works often for you.",
-      "resultText": "The room chooses between charm failure and honesty failure.",
+      "prompt": "{{spotlight}}'s date asks whether this line works often for them.",
+      "resultText": "The room chooses whether {{spotlight}} should fail with charm or fail with honesty.",
+      "roundTemplate": {
+        "id": "prediction",
+        "privatePrompt": "Who in this room could keep this date alive for another minute?",
+        "voteIntro": "The room thinks {{spotlight}} can still save this. Decide how they try.",
+        "receiptTemplate": "{{count}} players privately said {{spotlight}} could talk their way through this."
+      },
       "choices": [
-        { "id": "date_3_a", "label": "Say it never misses", "nextNodeId": "date_7", "resultText": "You double down with impossible confidence and the date becomes a legend by force.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
-        { "id": "date_3_b", "label": "Pivot into astrology", "nextNodeId": "date_8", "resultText": "The room calls an audible into zodiac discourse and the evening never recovers." }
+        { "id": "date_3_a", "label": "Have {{spotlight}} say it never misses", "nextNodeId": "date_7", "resultText": "{{spotlight}} doubles down with impossible confidence and turns the date into a legend by force.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_3_b", "label": "Make {{spotlight}} pivot into astrology", "nextNodeId": "date_8", "resultText": "{{spotlight}} calls an audible into zodiac discourse and the evening never recovers." }
       ]
     },
     {
       "id": "date_4",
       "kind": "core",
-      "prompt": "The waiter catches you holding two spoons and an entire lava cake.",
-      "resultText": "The room turns dessert theft into relationship lore.",
+      "prompt": "The waiter catches {{spotlight}} holding two spoons and an entire lava cake.",
+      "resultText": "The room turns {{spotlight}}'s dessert theft into relationship lore.",
       "audienceInterventionNodeIds": ["date_15"],
       "choices": [
-        { "id": "date_4_a", "label": "Offer a bite", "nextNodeId": "date_9", "resultText": "Sharing the stolen cake somehow reads as intimate enough to become relationship canon.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
-        { "id": "date_4_b", "label": "Claim emotional support cake", "nextNodeId": "date_10", "resultText": "The legal defense for dessert theft is so bad it becomes the whole evening.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
+        { "id": "date_4_a", "label": "Tell {{spotlight}} to offer a bite", "nextNodeId": "date_9", "resultText": "{{spotlight}} makes the stolen cake intimate enough to become relationship canon.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_4_b", "label": "Make {{spotlight}} claim emotional support cake", "nextNodeId": "date_10", "resultText": "{{spotlight}} delivers such a bad legal defense for dessert theft that it becomes the whole evening.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
       ]
     },
     {
@@ -81,6 +93,12 @@
       "kind": "core",
       "prompt": "Your date asks for a second line and the violinist is still somehow following you.",
       "resultText": "The room can either lock in the charm or collapse under witness pressure.",
+      "roundTemplate": {
+        "id": "prediction",
+        "privatePrompt": "Who in this room could somehow keep this date alive for one more terrible minute?",
+        "voteIntro": "The room thinks {{spotlight}} can still improvise romance here. Decide how they try.",
+        "receiptTemplate": "{{count}} players privately said {{spotlight}} could keep the bit alive."
+      },
       "choices": [
         { "id": "date_7_a", "label": "Invent a destiny anecdote", "nextNodeId": "date_12", "resultText": "The room manufactures history like it can be fact-checked later." },
         { "id": "date_7_b", "label": "Pretend this is all a surprise flash mob", "nextNodeId": "date_14", "resultText": "The room expands one lie into a full production." }
@@ -91,6 +109,13 @@
       "kind": "core",
       "prompt": "Astrology lands harder than expected and now your date wants a cosmic compatibility demo.",
       "resultText": "The room chooses between intimacy theater and celestial fraud.",
+      "roundTemplate": {
+        "id": "confession",
+        "privatePrompt": "Privately, what would you actually do here?",
+        "voteIntro": "Privately, the room leaned {{option}}. Now decide what the date-night group actually commits to.",
+        "receiptTemplate": "{{count}} players privately picked {{option}} before the room made it official.",
+        "distributionIntro": "{{count}} private reads pointed toward {{option}}."
+      },
       "choices": [
         { "id": "date_8_a", "label": "Read the moon with confidence", "nextNodeId": "date_13", "resultText": "You explain the stars like customer service for fate.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] },
         { "id": "date_8_b", "label": "Order matching drinks for the signs", "nextNodeId": "date_14", "resultText": "The room turns mysticism into a paired beverage program." }
@@ -112,6 +137,13 @@
       "kind": "core",
       "prompt": "The manager appears holding a comped tiramisu and a concern for public decorum.",
       "resultText": "The room chooses between apology theater and louder cake crime.",
+      "roundTemplate": {
+        "id": "secret_agenda",
+        "privatePrompt": "Choose the hidden agenda you want to push before the room goes public.",
+        "voteIntro": "Hidden agendas are locked. Decide what this date-night disaster officially becomes.",
+        "receiptTemplate": "{{count}} players secretly pushed {{option}} before the room performed confidence.",
+        "distributionIntro": "{{count}} private reads pushed {{option}} before anyone talked to the manager."
+      },
       "choices": [
         { "id": "date_10_a", "label": "Turn the apology into a toast", "nextNodeId": "date_11", "resultText": "The room mistakes consequences for a setup line." },
         { "id": "date_10_b", "label": "Escalate to dessert tasting menu", "nextNodeId": "date_14", "resultText": "The room responds to scrutiny with sugar-fueled ambition." }
@@ -125,6 +157,12 @@
         { "text": "The whole restaurant now assumes this is a real engagement and has started recording from better angles.", "gate": { "requiredModifiers": ["witnesses"] } }
       ],
       "resultText": "The room chooses whether to cross the line or fully erase it.",
+      "roundTemplate": {
+        "id": "betrayal",
+        "privatePrompt": "Who in this room should take the fall if this fake engagement becomes public history?",
+        "voteIntro": "The room picked {{spotlight}}. Decide how hard to lock them into the lie.",
+        "receiptTemplate": "{{count}} players quietly pushed {{spotlight}} toward the engagement fallout."
+      },
       "choices": [
         { "id": "date_11_a", "label": "Produce a fake timeline of your love story", "nextNodeId": "date_18", "resultText": "The room tells a complete relationship origin story with zero supporting evidence." },
         { "id": "date_11_b", "label": "Announce the wedding hashtag", "nextNodeId": "date_19", "resultText": "The room builds a digital monument to a joke in real time." }
@@ -149,6 +187,13 @@
         { "text": "The dessert tower diplomacy attracts a local food influencer who calls your chemistry 'deeply suspicious, but watchable.'", "gate": { "requiredModifiers": ["dessert_chaos"] } }
       ],
       "resultText": "The room chooses whether to become iconic or litigable.",
+      "roundTemplate": {
+        "id": "confession",
+        "privatePrompt": "Privately, what would you actually do once the influencer locks onto the table?",
+        "voteIntro": "Privately, the room leaned {{option}}. Now decide what the whole table actually commits to.",
+        "receiptTemplate": "{{count}} players privately picked {{option}} before the room made it content.",
+        "distributionIntro": "{{count}} private reads clustered around {{option}} before the influencer hit post."
+      },
       "choices": [
         { "id": "date_13_a", "label": "Lean into couple branding", "nextNodeId": "date_20", "resultText": "The room productizes flirtation at alarming speed." },
         { "id": "date_13_b", "label": "Offer the influencer first dance rights", "nextNodeId": "date_22", "resultText": "The room turns dinner into a multi-party spectacle." }
