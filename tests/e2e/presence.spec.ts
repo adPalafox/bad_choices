@@ -17,11 +17,11 @@ test("reconnect restores the saved seat and disconnected players stop counting t
 
   playerB.page = await playerB.context.newPage();
   await playerB.page.goto(`/room/${roomCode}`);
-  await expect(playerB.page.getByText("Restoring your seat in the room")).toBeVisible();
 
   await expect
     .poll(async () => (await getRoomState(host.page, roomCode)).players.length)
     .toBe(3);
+  await expect(playerB.page.getByTestId("inline-join-room-submit")).toHaveCount(0);
   await expect(host.page.getByTestId("start-round-button")).toBeEnabled();
   await expectRoster(host.page, [host.name, playerA.name, playerB.name]);
 });

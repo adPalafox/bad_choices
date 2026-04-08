@@ -132,6 +132,12 @@ export async function expectRoster(page: Page, names: string[]) {
 }
 
 export async function startRound(host: TestPlayer, roomCode: string) {
+  await expect
+    .poll(async () => (await getRoomState(host.page, roomCode)).players.length, {
+      message: `Expected room ${roomCode} to have enough connected players to start`
+    })
+    .toBeGreaterThanOrEqual(3);
+
   await expect(host.page.getByTestId("start-round-button")).toBeEnabled();
   await host.page.getByTestId("start-round-button").click();
   return waitForPhase(host.page, roomCode, "private_input");
@@ -180,11 +186,14 @@ export async function playRound(roomCode: string, players: TestPlayer[], roundIn
       continue;
     }
 
-    await players[index].page
+    const choiceButton = players[index].page
       .getByTestId("public-choice-list")
       .getByRole("button")
-      .nth(selection)
-      .click();
+      .nth(selection);
+
+    await expect(choiceButton).toBeVisible();
+    await expect(choiceButton).toBeEnabled();
+    await choiceButton.click();
   }
 
   if (roundInput.publicVoteIndices.some((selection) => selection === null)) {

@@ -74,7 +74,7 @@ test("confession template keeps private reads option-based", async ({ host, play
   });
 
   expect(votingState.resolvedRoundContext?.distributionLine).toBeTruthy();
-  await expect(host.page.getByText("Private read")).toBeVisible();
+  await expect(host.page.getByTestId("reveal-summary").getByText("Private read", { exact: true })).toBeVisible();
 });
 
 test("secret agenda template exposes the hidden-agenda private phase", async ({ host, playerA, playerB }) => {

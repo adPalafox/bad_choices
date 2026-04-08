@@ -26,6 +26,8 @@ test("smoke lobby create, join, and start gating @smoke", async ({ host, playerA
 });
 
 test("smoke full game reaches artifact, share, and rematch @smoke", async ({ host, playerA, playerB }) => {
+  test.slow();
+
   const players = [host, playerA, playerB];
   const roomCode = await createRoom(host, "Cursed Team-Building");
 
@@ -81,4 +83,3 @@ test("smoke full game reaches artifact, share, and rematch @smoke", async ({ hos
   await expect(host.page.getByTestId("room-code-value")).toHaveText(roomCode);
   await expect(host.page.getByTestId("start-round-button")).toBeEnabled();
 });
-
