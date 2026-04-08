@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { advanceReveal, createRoom, getRoomState, joinRoomFromInvite, joinRoomFromLanding, playRound, startRound, waitForCurrentNode, waitForPhase } from "./support/room";
-import { getRoomSnapshot } from "./support/admin";
+import { expireCurrentPhase, getRoomSnapshot } from "./support/admin";
 
 test("majority resolution keeps the majority-picked choice", async ({ host, playerA, playerB }) => {
   const players = [host, playerA, playerB];
@@ -114,4 +114,35 @@ test("betrayal ties let the power holder break the outcome", async ({ host, play
   expect(revealState.lastEvent?.power_altered_outcome).toBe(true);
   expect(revealState.lastEvent?.selected_choice_id).toBe(secondChoiceId);
   expect(revealState.lastEvent?.power_holder_player_id).toBe(playerBravo?.id ?? null);
+});
+
+test("reveal auto-advances the live page into the next scenario after the receipt timeout", async ({ host, playerA, playerB }) => {
+  const players = [host, playerA, playerB];
+  const roomCode = await createRoom(host, "Chaotic Friends");
+
+  await joinRoomFromLanding(playerA, roomCode);
+  await joinRoomFromInvite(playerB, roomCode);
+  const startedState = await startRound(host, roomCode);
+  const firstNodeId = startedState.currentNode?.id;
+
+  await playRound(roomCode, players, {
+    privateSelections: [playerA.name, playerA.name, playerA.name],
+    publicVoteIndices: [0, 0, 1]
+  });
+
+  await expect(host.page.getByTestId("reveal-summary")).toBeVisible();
+
+  await expireCurrentPhase(roomCode);
+
+  await expect
+    .poll(async () => (await getRoomState(host.page, roomCode)).room.phase, {
+      message: `Expected room ${roomCode} to leave reveal automatically`
+    })
+    .toBe("private_input");
+
+  await expect(host.page.getByTestId("reveal-summary")).toBeHidden();
+  await expect(host.page.getByTestId("private-choice-list")).toBeVisible();
+
+  const nextState = await getRoomState(host.page, roomCode);
+  expect(nextState.currentNode?.id).not.toBe(firstNodeId);
 });

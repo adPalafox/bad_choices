@@ -45,6 +45,7 @@ type JoinState = {
 export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const router = useRouter();
   const artifactCardRef = useRef<HTMLElement | null>(null);
+  const resolvingExpiredPhaseRef = useRef(false);
   const [state, setState] = useState<ApiRoomState | null>(null);
   const [session, setSession] = useState<RoomSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const [showPackPicker, setShowPackPicker] = useState(false);
   const [nextPackId, setNextPackId] = useState("");
   const [sharingArtifact, setSharingArtifact] = useState(false);
+  const [showRevealDetails, setShowRevealDetails] = useState(false);
   const [joinState, setJoinState] = useState<JoinState>({
     nickname: "",
     busy: false,
@@ -109,6 +111,26 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     },
     [code]
   );
+
+  const resolveExpiredPhase = useCallback(async () => {
+    if (resolvingExpiredPhaseRef.current) {
+      return;
+    }
+
+    resolvingExpiredPhaseRef.current = true;
+
+    try {
+      const response = await fetch(`/api/rooms/${code}/resolve`, {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        await refreshState();
+      }
+    } finally {
+      resolvingExpiredPhaseRef.current = false;
+    }
+  }, [code, refreshState]);
 
   useEffect(() => {
     setSession(readRoomSession(code));
@@ -188,18 +210,22 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       return;
     }
 
-    const interval = window.setInterval(() => {
+    const resolveIfExpired = () => {
       if (new Date(state.room.phase_deadline ?? "").getTime() > Date.now()) {
         return;
       }
 
-      void fetch(`/api/rooms/${code}/resolve`, {
-        method: "POST"
-      });
+      void resolveExpiredPhase();
+    };
+
+    resolveIfExpired();
+
+    const interval = window.setInterval(() => {
+      resolveIfExpired();
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [code, state?.room.phase, state?.room.phase_deadline]);
+  }, [resolveExpiredPhase, state?.room.phase, state?.room.phase_deadline]);
 
   useEffect(() => {
     if (!session) {
@@ -251,7 +277,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   }, [code, refreshState, session, syncPresence]);
 
   useEffect(() => {
-    setShowRoomPanel(state?.room.phase === "lobby");
+    setShowRoomPanel(state?.room.phase === "lobby" || state?.room.phase === "ended");
   }, [state?.room.phase]);
 
   useEffect(() => {
@@ -304,6 +330,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     }
   }, [state?.room.phase]);
 
+  useEffect(() => {
+    setShowRevealDetails(false);
+  }, [state?.lastEvent?.id, state?.room.phase]);
+
   const me = session && state ? state.players.find((player) => player.id === session.playerId) ?? null : null;
   const isLobby = state?.room.phase === "lobby";
   const inviteUrl =
@@ -352,6 +382,8 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     me && currentNode && state?.votes.some((vote) => vote.player_id === me.id && vote.node_id === currentNode.id)
   ) || Boolean(pendingChoiceId);
   const showLiveVoteCounts = Boolean(me?.is_host && state?.room.phase === "voting");
+  const isTimedPhase =
+    state?.room.phase === "private_input" || state?.room.phase === "voting" || state?.room.phase === "reveal";
 
   const visibleVoteSnapshot =
     state?.room.phase === "reveal" || state?.room.phase === "ended" ? state.lastEvent?.vote_snapshot ?? null : null;
@@ -438,6 +470,28 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
             body: "The private nomination is done. Everyone can now see the public options and decide the fallout together."
           }
         : null;
+  const showPrivateTutorial = state?.room.phase === "private_input" && showFirstRoundTutorial && !hasSubmittedPrivate;
+  const showVotingTutorial = state?.room.phase === "voting" && showFirstRoundTutorial && !hasVoted;
+  const privateSupportLine =
+    !showPrivateTutorial && !hasSubmittedPrivate
+      ? pendingRoundContext?.templateId === "secret_agenda"
+        ? "Push one hidden agenda in private."
+        : pendingRoundContext?.privateInputType === "choice_option"
+          ? "Pick what you would really do."
+          : "Pick who gets spotlighted."
+      : null;
+  const privateLockedStatus = hasSubmittedPrivate ? "Private nomination locked" : null;
+  const votingContextLabel = resolvedRoundContext?.spotlightLabel
+    ? "Picked"
+    : resolvedRoundContext?.leadingPrivateOptionLabel
+      ? "Private lean"
+      : null;
+  const votingContextValue = resolvedRoundContext?.spotlightLabel
+    ? resolvedRoundContext.spotlightLabel
+    : resolvedRoundContext?.leadingPrivateOptionLabel
+      ? renderSpotlightText(resolvedRoundContext.leadingPrivateOptionLabel)
+      : null;
+  const voteLockedStatus = hasVoted ? "Public vote locked" : null;
 
   async function handleJoinRoom() {
     setJoinState((current) => ({
@@ -758,6 +812,14 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const revealOutcomeDetail = state?.lastEvent
     ? renderSpotlightText(state.lastEvent.consequence_line)
     : "";
+  const hasRevealDetails = Boolean(
+    state?.lastEvent?.leading_private_option_label ||
+      state?.lastEvent?.distribution_line ||
+      state?.lastEvent?.template_id === "secret_agenda" ||
+      state?.lastEvent?.result_text ||
+      state?.lastEvent?.receipt_line ||
+      state?.lastEvent?.power_holder_player_id
+  );
 
   if (loading) {
     return <main className="room-shell">Loading room...</main>;
@@ -806,12 +868,14 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
           <div className="compact-header-main">
             <div className="section-tag">Live game</div>
             <div className="compact-title-row">
+              {!isTimedPhase ? (
               <button className="button-ghost" onClick={() => setShowRoomPanel((current) => !current)} type="button">
                 <span className="button-content">
                   {showRoomPanel ? <EyeOffIcon className="button-icon" /> : <EyeIcon className="button-icon" />}
                   <span>{showRoomPanel ? "Hide room details" : "Show room details"}</span>
                 </span>
               </button>
+              ) : null}
             </div>
           </div>
           <div className="room-meta">
@@ -821,6 +885,11 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
               <UsersIcon className="meta-icon" />
               <span>{playerCount} players</span>
             </span>
+            {isTimedPhase ? (
+              <button className="room-meta-button" onClick={() => setShowRoomPanel((current) => !current)} type="button">
+                {showRoomPanel ? "Hide players" : "Players"}
+              </button>
+            ) : null}
           </div>
         </section>
       )}
@@ -887,11 +956,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 <div className="section-tag">How it works</div>
                 <h2>Private nomination, public fallout</h2>
                 <ol className="number-list">
-                  <li>Read the setup fast.</li>
-                  <li>Pick privately who gets spotlighted before the {PRIVATE_INPUT_DURATION_SECONDS}-second clock runs out.</li>
-                  <li>Vote publicly on what happens before the {VOTE_DURATION_SECONDS}-second clock expires.</li>
-                  <li>Watch the reveal show who got blamed and how it landed.</li>
+                  <li>Pick privately who gets spotlighted.</li>
+                  <li>Vote publicly on what happens next.</li>
                 </ol>
+                <p className="helper-text lobby-payoff-line">The reveal names who got blamed and how it landed.</p>
                 {me?.is_host ? (
                   <button
                     className="button-primary lobby-start-button"
@@ -914,7 +982,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
 
             {state.room.phase === "private_input" && state.currentNode ? (
               <>
-                {showFirstRoundTutorial && firstRoundTutorial ? (
+                {showPrivateTutorial && firstRoundTutorial ? (
                   <section className="tutorial-banner" aria-label="Round one tutorial">
                     <p className="tutorial-banner-label">{firstRoundTutorial.label}</p>
                     <h3>{firstRoundTutorial.title}</h3>
@@ -925,11 +993,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div>
                     <div className="section-tag">Private nomination</div>
                     <h2>{renderPrivatePhaseText(state.currentNode.prompt)}</h2>
-                    <p>
-                      {renderPrivatePhaseText(
-                        pendingRoundContext?.privatePrompt ?? "Pick privately who should get spotlighted."
-                      )}
-                    </p>
+                    {privateSupportLine ? <p className="phase-support-line">{privateSupportLine}</p> : null}
                   </div>
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
@@ -1003,22 +1067,17 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         );
                       })}
                 </div>
-
-                <p className="helper-text">
-                  {hasSubmittedPrivate
-                    ? "Private nomination locked. Nobody sees your pick until the room moves into the public vote."
-                    : pendingRoundContext?.templateId === "secret_agenda"
-                      ? "Lock a hidden agenda in private. The room only sees the fallout once public voting begins."
-                    : pendingRoundContext?.privateInputType === "choice_option"
-                      ? "Choose privately what you would really do. The room only sees the lean once public voting opens."
-                      : "Choose one player fast. This private nomination decides who gets spotlighted before the public vote."}
-                </p>
+                {privateLockedStatus ? (
+                  <div className="phase-status-row">
+                    <span className="phase-status-chip">{privateLockedStatus}</span>
+                  </div>
+                ) : null}
               </>
             ) : null}
 
             {state.room.phase === "voting" && state.currentNode ? (
               <>
-                {showFirstRoundTutorial && firstRoundTutorial ? (
+                {showVotingTutorial && firstRoundTutorial ? (
                   <section className="tutorial-banner" aria-label="Round one tutorial">
                     <p className="tutorial-banner-label">{firstRoundTutorial.label}</p>
                     <h3>{firstRoundTutorial.title}</h3>
@@ -1029,11 +1088,6 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div>
                     <div className="section-tag">Public vote</div>
                     <h2>{renderSpotlightText(state.currentNode.prompt)}</h2>
-                    <p>
-                      {renderSpotlightText(
-                        resolvedRoundContext?.voteIntro ?? "The private nomination is in. Decide publicly what happens."
-                      )}
-                    </p>
                   </div>
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
@@ -1052,38 +1106,11 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 >
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
-
-                {resolvedRoundContext?.spotlightLabel ? (
-                  <section className="payoff-card">
-                    <p className="payoff-kicker">
-                      {resolvedRoundContext.templateId === "prediction"
-                        ? "Predicted player"
-                        : resolvedRoundContext.templateId === "betrayal"
-                          ? "Public scapegoat"
-                          : "Spotlight"}
-                    </p>
-                    <h2 className="payoff-headline">{resolvedRoundContext.spotlightLabel}</h2>
-                    <p className="payoff-body">
-                      {resolvedRoundContext.templateId === "prediction"
-                        ? "The room privately decided this player should be the one to carry the plan."
-                        : resolvedRoundContext.templateId === "betrayal"
-                          ? "One player is secretly holding betrayal leverage while this person absorbs the public pressure."
-                        : resolvedRoundContext.privateResolutionType === "silence"
-                        ? "Nobody would volunteer, so chaos assigned the pressure."
-                        : "The room quietly decided this player should own the fallout."}
-                    </p>
-                  </section>
-                ) : null}
-                {!resolvedRoundContext?.spotlightLabel && resolvedRoundContext?.distributionLine ? (
-                  <section className="payoff-card">
-                    <p className="payoff-kicker">
-                      {resolvedRoundContext.templateId === "secret_agenda" ? "Hidden agenda" : "Private read"}
-                    </p>
-                    <h2 className="payoff-headline">
-                      {resolvedRoundContext.leadingPrivateOptionLabel ?? "No consensus"}
-                    </h2>
-                    <p className="payoff-body">{renderSpotlightText(resolvedRoundContext.distributionLine)}</p>
-                  </section>
+                {votingContextLabel && votingContextValue && !showVotingTutorial && !hasVoted ? (
+                  <div className="phase-context-strip">
+                    <span>{votingContextLabel}</span>
+                    <strong>{votingContextValue}</strong>
+                  </div>
                 ) : null}
 
                 <div className="choice-list" data-testid="public-choice-list">
@@ -1113,16 +1140,11 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     );
                   })}
                 </div>
-
-                <p className="helper-text">
-                  {hasVoted
-                    ? showLiveVoteCounts
-                      ? "Public vote locked. Live counts stay visible for the host while the room decides."
-                      : "Public vote locked. Results stay hidden until the choice resolves."
-                    : showLiveVoteCounts
-                      ? "Pick one fast. The host can monitor the public count, nobody else can."
-                      : "Pick one fast. This is the public decision about what happens next."}
-                </p>
+                {voteLockedStatus ? (
+                  <div className="phase-status-row">
+                    <span className="phase-status-chip">{voteLockedStatus}</span>
+                  </div>
+                ) : null}
               </>
             ) : null}
 
@@ -1168,12 +1190,16 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                       <strong className="reveal-summary-value">{revealOutcomeDetail}</strong>
                     </div>
                   </div>
-                  {(state.lastEvent.leading_private_option_label ||
-                    state.lastEvent.distribution_line ||
-                    state.lastEvent.template_id === "secret_agenda" ||
-                    state.lastEvent.result_text ||
-                    state.lastEvent.receipt_line ||
-                    state.lastEvent.power_holder_player_id) ? (
+                  {hasRevealDetails ? (
+                    <button
+                      className="button-ghost reveal-details-toggle"
+                      onClick={() => setShowRevealDetails((current) => !current)}
+                      type="button"
+                    >
+                      {showRevealDetails ? "Hide details" : "Show details"}
+                    </button>
+                  ) : null}
+                  {hasRevealDetails && showRevealDetails ? (
                     <div className="reveal-secondary-details" aria-label="Reveal details">
                       {state.lastEvent.leading_private_option_label ? (
                         <p className="reveal-detail-line">

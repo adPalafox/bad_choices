@@ -390,9 +390,9 @@ button {
 .tutorial-banner {
   display: grid;
   gap: 8px;
-  margin-bottom: 18px;
-  padding: 18px 20px;
-  border-radius: 20px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 203, 105, 0.28);
   background:
     radial-gradient(circle at top right, rgba(255, 203, 105, 0.18), transparent 34%),
@@ -417,7 +417,59 @@ button {
 
 .tutorial-banner p {
   margin: 0;
-  max-width: 54ch;
+  max-width: 44ch;
+}
+
+.phase-support-line {
+  margin: 0;
+  max-width: 38ch;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.phase-context-strip,
+.phase-status-row {
+  margin-top: 14px;
+}
+
+.phase-context-strip,
+.phase-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.phase-context-strip span,
+.phase-status-chip {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.phase-context-strip span {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.phase-context-strip strong {
+  font-size: 0.98rem;
+  color: rgba(247, 243, 233, 0.96);
+}
+
+.phase-status-chip {
+  color: var(--mint-strong);
+  border-color: rgba(129, 244, 215, 0.24);
+  background: rgba(129, 244, 215, 0.08);
+  font-weight: 700;
+}
+
+.lobby-payoff-line {
+  margin-top: 6px;
 }
 
 .phase-progress {
@@ -647,6 +699,13 @@ button {
   line-height: 1.45;
   color: rgba(247, 243, 233, 0.88);
   font-weight: 600;
+}
+
+.reveal-details-toggle {
+  justify-self: start;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
 }
 
 .ending-actions {
@@ -958,6 +1017,26 @@ button {
   margin-top: 4px;
 }
 
+.room-meta-button {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  padding: 6px 10px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.room-meta-button:hover,
+.room-meta-button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--text);
+}
+
 .footnote-row {
   margin-top: 20px;
   color: var(--muted);
@@ -1218,6 +1297,16 @@ button {
   .payoff-card {
     padding: 22px;
     border-radius: 20px;
+  }
+
+  .tutorial-banner {
+    padding: 12px 14px;
+  }
+
+  .phase-context-strip,
+  .phase-status-chip {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .reveal-summary-grid {
