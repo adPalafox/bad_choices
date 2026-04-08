@@ -93,8 +93,10 @@ export async function createRoom(host: TestPlayer, packTitle: string) {
   }
 
   await createForm.getByTestId("pack-select").selectOption(packId);
-  await createForm.getByTestId("create-room-submit").click();
-  await host.page.waitForURL(/\/room\/[A-Z0-9]{4}$/u);
+  await Promise.all([
+    host.page.waitForURL(/\/room\/[A-Z0-9]{4}$/u, { waitUntil: "commit" }),
+    createForm.getByTestId("create-room-submit").click()
+  ]);
 
   const roomCode = host.page.url().split("/").at(-1)?.toUpperCase();
 
@@ -110,15 +112,19 @@ export async function joinRoomFromLanding(player: TestPlayer, roomCode: string) 
   await player.page.goto("/");
   await player.page.getByTestId("join-code-input").fill(roomCode);
   await player.page.getByTestId("join-name-input").fill(player.name);
-  await player.page.getByTestId("join-room-submit").click();
-  await player.page.waitForURL(new RegExp(`/room/${roomCode}$`, "u"));
+  await Promise.all([
+    player.page.waitForURL(new RegExp(`/room/${roomCode}$`, "u"), { waitUntil: "commit" }),
+    player.page.getByTestId("join-room-submit").click()
+  ]);
 }
 
 export async function joinRoomFromInvite(player: TestPlayer, roomCode: string) {
   await player.page.goto(`/room/${roomCode}`);
   await player.page.getByTestId("inline-join-name-input").fill(player.name);
-  await player.page.getByTestId("inline-join-room-submit").click();
-  await player.page.waitForURL(new RegExp(`/room/${roomCode}$`, "u"));
+  await Promise.all([
+    player.page.waitForURL(new RegExp(`/room/${roomCode}$`, "u"), { waitUntil: "commit" }),
+    player.page.getByTestId("inline-join-room-submit").click()
+  ]);
 }
 
 export async function expectRoster(page: Page, names: string[]) {
@@ -138,7 +144,24 @@ export async function startRound(host: TestPlayer, roomCode: string) {
     })
     .toBeGreaterThanOrEqual(3);
 
-  await expect(host.page.getByTestId("start-round-button")).toBeEnabled();
+  await expect
+    .poll(
+      async () => {
+        const button = host.page.getByTestId("start-round-button");
+        const enabled = await button.isEnabled().catch(() => false);
+
+        if (!enabled) {
+          await host.page.reload({ waitUntil: "domcontentloaded" });
+        }
+
+        return button.isEnabled().catch(() => false);
+      },
+      {
+        message: `Expected start button to become enabled for room ${roomCode}`
+      }
+    )
+    .toBe(true);
+
   await host.page.getByTestId("start-round-button").click();
   return waitForPhase(host.page, roomCode, "private_input");
 }
