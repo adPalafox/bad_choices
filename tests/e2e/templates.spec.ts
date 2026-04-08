@@ -100,7 +100,7 @@ test("secret agenda template exposes the hidden-agenda private phase", async ({ 
   const agendaState = await waitForCurrentNode(host.page, roomCode, "team_10");
   expect(agendaState.pendingRoundContext?.templateId).toBe("secret_agenda");
   expect(agendaState.pendingRoundContext?.privateInputType).toBe("choice_option");
-  await expect(host.page.getByText("Lock a hidden agenda in private.")).toBeVisible();
+  await expect(host.page.getByText("Push one hidden agenda in private.")).toBeVisible();
 });
 
 test("betrayal template shows a public scapegoat and hidden leverage copy", async ({ host, playerA, playerB }) => {
@@ -138,5 +138,6 @@ test("betrayal template shows a public scapegoat and hidden leverage copy", asyn
   });
 
   await expect(host.page.getByText("Public scapegoat")).toBeVisible();
+  await host.page.getByRole("button", { name: "Show details" }).click();
   await expect(host.page.getByText("Hidden power")).toBeVisible();
 });
