@@ -23,8 +23,8 @@
       },
       "choices": [
         { "id": "friends_1_a", "label": "Make {{spotlight}} steal the mic", "nextNodeId": "friends_2", "resultText": "{{spotlight}} lunges for instant karaoke authority and turns a sidewalk into a stage." },
-        { "id": "friends_1_b", "label": "Make {{spotlight}} sell tickets", "nextNodeId": "friends_3", "resultText": "{{spotlight}} appoints themselves finance and starts charging strangers for the chaos." },
-        { "id": "friends_1_c", "label": "Make {{spotlight}} pretend it's art", "nextNodeId": "friends_4", "resultText": "{{spotlight}} rebrands trespassing as an immersive installation with dangerous confidence." }
+        { "id": "friends_1_b", "label": "Make {{spotlight}} sell tickets", "nextNodeId": "friends_3", "resultText": "{{spotlight}} appoints themselves finance and starts charging strangers for the chaos.", "revealPrompt": "{{spotlight}}, give us your five-second pitch." },
+        { "id": "friends_1_c", "label": "Make {{spotlight}} pretend it's art", "nextNodeId": "friends_4", "resultText": "{{spotlight}} rebrands trespassing as an immersive installation with dangerous confidence.", "revealPrompt": "{{spotlight}}, explain why this counted as art." }
       ]
     },
     {

@@ -14,6 +14,7 @@ import type {
   PublicPlayer,
   ResolutionType,
   ResolvedPublicRoundContext,
+  RevealMoment,
   RoundTemplateConfig,
   RoundSocialObject,
   ScenarioNode,
@@ -636,6 +637,83 @@ export function canAdvanceRevealPhase(room: RoomRecord) {
   return room.phase === "reveal" && room.phase_deadline
     ? new Date(room.phase_deadline).getTime() <= Date.now()
     : false;
+}
+
+type RevealPromptIntent = "pitch" | "explain" | "commit" | "excuse" | "announce" | "justify" | "defend";
+
+function getRevealPromptTemplateForIntent(intent: RevealPromptIntent) {
+  switch (intent) {
+    case "pitch":
+      return "{{spotlight}}, give us your five-second pitch.";
+    case "explain":
+      return "{{spotlight}}, explain why this made sense.";
+    case "commit":
+      return "{{spotlight}}, commit to the bit in one sentence.";
+    case "excuse":
+      return "{{spotlight}}, give us your one-line excuse.";
+    case "announce":
+      return "{{spotlight}}, give us the cleanest version of that announcement.";
+    case "justify":
+      return "{{spotlight}}, tell us why this was the move.";
+    case "defend":
+    default:
+      return "{{spotlight}}, give us your one-line defense.";
+  }
+}
+
+function inferRevealPromptIntent(choiceLabel: string): RevealPromptIntent {
+  const normalized = choiceLabel.toLowerCase();
+
+  if (/(sell|pitch|offer|crowdfund|fundraiser|merch|vip|equity|outreach)/u.test(normalized)) {
+    return "pitch";
+  }
+
+  if (/(pretend|claim|explain|read|invent|rebrand|call it|frame|pivot into|make it sound)/u.test(normalized)) {
+    return "explain";
+  }
+
+  if (/(commit|play until|cue|follow through|lean into|stage-dive|toast|battle|deliver|produce|read the moon)/u.test(normalized)) {
+    return "commit";
+  }
+
+  if (/(blame|excuse|apology|retreat|deny|cover|hide|dodge)/u.test(normalized)) {
+    return "excuse";
+  }
+
+  if (/(announce|declare|launch|post|schedule|open the barrier|wedding hashtag)/u.test(normalized)) {
+    return "announce";
+  }
+
+  if (/(demand|elect|appoint|draft|create|promise|present|justify|turn .* into|make .* opener)/u.test(normalized)) {
+    return "justify";
+  }
+
+  return "defend";
+}
+
+function getRevealPromptLine(room: RoomRecord, event: GameEventRecord) {
+  const sourceNode = getScenarioNode(room.scenario_pack, event.node_id);
+  const sourceChoice = sourceNode?.choices.find((choice) => choice.id === event.selected_choice_id) ?? null;
+  const choiceLabel =
+    applySpotlightTemplate(event.selected_choice_label, event.spotlight_label) ?? event.selected_choice_label;
+  const authoredTemplate = sourceChoice?.revealPrompt ?? sourceNode?.revealPrompt ?? null;
+  const promptTemplate = authoredTemplate ?? getRevealPromptTemplateForIntent(inferRevealPromptIntent(choiceLabel));
+
+  return applySpotlightTemplate(promptTemplate, event.spotlight_label) ?? promptTemplate;
+}
+
+export function buildRevealMoment(room: RoomRecord, lastEvent: GameEventRecord): RevealMoment {
+  const spotlight = lastEvent.spotlight_label?.trim() ?? "";
+  const choiceLabel = applySpotlightTemplate(lastEvent.selected_choice_label, lastEvent.spotlight_label) ?? lastEvent.selected_choice_label;
+  const nextState = getNextPhaseAfterReveal(room, lastEvent);
+
+  return {
+    headline: spotlight ? `The room picked ${spotlight}.` : "The room showed its hand.",
+    decisionLine: `Decision landed on: ${choiceLabel}`,
+    promptLine: getRevealPromptLine(room, lastEvent),
+    waitingLine: "Waiting for the host to move on.",
+    hostAdvanceLabel: nextState.phase === "ended" ? "Show ending" : "Next round"
+  };
 }
 
 function getResolutionLabel(resolutionType: ResolutionType) {

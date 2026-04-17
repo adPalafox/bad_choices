@@ -1,6 +1,7 @@
 import { getScenarioPack } from "@/lib/content";
 import {
   applyRoundContextToNode,
+  buildRevealMoment,
   canResolvePrivateInputPhase,
   canAdvanceRevealPhase,
   canResolveVotingPhase,
@@ -109,6 +110,9 @@ export async function getRoomState(code: string): Promise<ApiRoomState> {
   const currentNode = room.phase === "private_input"
     ? rawCurrentNode
     : applyRoundContextToNode(rawCurrentNode, resolvedRoundContext);
+
+  const lastEvent = events?.at(-1) ?? null;
+
   return {
     room,
     pack: getScenarioPack(room.scenario_pack),
@@ -118,9 +122,10 @@ export async function getRoomState(code: string): Promise<ApiRoomState> {
     events: events ?? [],
     currentNode,
     pendingNode,
-    lastEvent: events?.at(-1) ?? null,
+    lastEvent,
     pendingRoundContext,
-    resolvedRoundContext
+    resolvedRoundContext,
+    revealMoment: room.phase === "reveal" && lastEvent ? buildRevealMoment(room, lastEvent) : null
   };
 }
 
@@ -573,38 +578,54 @@ export async function resolveRoom(code: string) {
     return;
   }
 
-  if (state.room.phase === "reveal" && state.lastEvent && canAdvanceRevealPhase(state.room)) {
-    const nextState = getNextPhaseAfterReveal(state.room, state.lastEvent);
+}
 
-    const { error } = await supabase
-      .from("rooms")
-      .update({
-        status: nextState.status,
-        phase: nextState.phase,
-        round: nextState.round,
-        current_node_id: nextState.currentNodeId,
-        pending_node_id: nextState.pendingNodeId,
-        phase_deadline: nextState.phaseDeadline
-      })
-      .eq("id", state.room.id);
+export async function advanceRevealRoom(code: string, sessionId: string) {
+  const supabase = getSupabaseAdminClient();
+  const state = await getRoomState(code);
 
-    if (error) {
-      throw new Error("Failed to advance room state.");
-    }
+  if (state.room.phase !== "reveal" || !state.lastEvent) {
+    throw new Error("Reveal is not ready to advance.");
+  }
 
-    if (nextState.phase === "private_input") {
-      await Promise.all([
-        supabase
-          .from("private_submissions")
-          .delete()
-          .eq("room_id", state.room.id)
-          .eq("round", state.room.round),
-        supabase
-          .from("votes")
-          .delete()
-          .eq("room_id", state.room.id)
-          .eq("round", state.room.round)
-      ]);
-    }
+  if (state.room.host_session_id !== sessionId) {
+    throw new Error("Only the host can advance the reveal.");
+  }
+
+  if (!canAdvanceRevealPhase(state.room)) {
+    throw new Error("Hold reveal a little longer.");
+  }
+
+  const nextState = getNextPhaseAfterReveal(state.room, state.lastEvent);
+
+  const { error } = await supabase
+    .from("rooms")
+    .update({
+      status: nextState.status,
+      phase: nextState.phase,
+      round: nextState.round,
+      current_node_id: nextState.currentNodeId,
+      pending_node_id: nextState.pendingNodeId,
+      phase_deadline: nextState.phaseDeadline
+    })
+    .eq("id", state.room.id);
+
+  if (error) {
+    throw new Error("Failed to advance room state.");
+  }
+
+  if (nextState.phase === "private_input") {
+    await Promise.all([
+      supabase
+        .from("private_submissions")
+        .delete()
+        .eq("room_id", state.room.id)
+        .eq("round", state.room.round),
+      supabase
+        .from("votes")
+        .delete()
+        .eq("room_id", state.room.id)
+        .eq("round", state.room.round)
+    ]);
   }
 }

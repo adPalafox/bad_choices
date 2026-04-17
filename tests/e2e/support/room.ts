@@ -41,6 +41,13 @@ type RoomState = {
     power_holder_player_id: string | null;
     power_altered_outcome: boolean;
   } | null;
+  revealMoment: {
+    headline: string;
+    decisionLine: string;
+    promptLine: string;
+    waitingLine: string;
+    hostAdvanceLabel: string;
+  } | null;
 };
 
 type RoundInput = {
@@ -175,7 +182,15 @@ export async function resolveExpiredPhase(page: Page, roomCode: string) {
 
 export async function advanceReveal(page: Page, roomCode: string) {
   await waitForPhase(page, roomCode, "reveal");
-  await resolveExpiredPhase(page, roomCode);
+  await expireCurrentPhase(roomCode);
+  const session = await readStoredRoomSession(page, roomCode);
+  const response = await page.request.post(`/api/rooms/${roomCode}/advance`, {
+    data: {
+      sessionId: session.sessionId
+    }
+  });
+
+  expect(response.ok()).toBeTruthy();
 
   await expect
     .poll(async () => {
@@ -230,6 +245,22 @@ export async function playRound(roomCode: string, players: TestPlayer[], roundIn
 
 export async function getRecordedShareCalls(page: Page) {
   return page.evaluate(() => (window as Window & { __badChoicesShareCalls?: unknown[] }).__badChoicesShareCalls ?? []);
+}
+
+export async function readStoredRoomSession(page: Page, roomCode: string) {
+  return page.evaluate((currentRoomCode) => {
+    const raw = window.localStorage.getItem(`bad-choices-room:${currentRoomCode.toUpperCase()}`);
+
+    if (!raw) {
+      throw new Error(`Missing local room session for ${currentRoomCode}.`);
+    }
+
+    return JSON.parse(raw) as {
+      sessionId: string;
+      playerId: string;
+      nickname: string;
+    };
+  }, roomCode);
 }
 
 async function selectPrivateChoice(player: TestPlayer, state: RoomState, selection: string | number) {

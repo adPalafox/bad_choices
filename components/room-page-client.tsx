@@ -56,7 +56,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
   const [pendingPrivateSelectionId, setPendingPrivateSelectionId] = useState<string | null>(null);
   const [pendingChoiceId, setPendingChoiceId] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<"start" | "rematch" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"start" | "rematch" | "advance" | null>(null);
   const [showPackPicker, setShowPackPicker] = useState(false);
   const [nextPackId, setNextPackId] = useState("");
   const [sharingArtifact, setSharingArtifact] = useState(false);
@@ -205,7 +205,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   useEffect(() => {
     if (
       !state?.room.phase_deadline ||
-      (state.room.phase !== "private_input" && state.room.phase !== "voting" && state.room.phase !== "reveal")
+      (state.room.phase !== "private_input" && state.room.phase !== "voting")
     ) {
       return;
     }
@@ -328,6 +328,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     if (state?.room.phase === "lobby") {
       setPendingAction((current) => (current === "rematch" ? null : current));
     }
+
+    if (state?.room.phase !== "reveal") {
+      setPendingAction((current) => (current === "advance" ? null : current));
+    }
   }, [state?.room.phase]);
 
   useEffect(() => {
@@ -343,6 +347,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const currentChoices = useMemo(() => currentNode?.choices ?? [], [currentNode]);
   const pendingRoundContext = state?.pendingRoundContext ?? null;
   const resolvedRoundContext = state?.resolvedRoundContext ?? null;
+  const revealMoment = state?.revealMoment ?? null;
   const totalPrivateSubmissions =
     (state?.privateSubmissions.length ?? 0) +
     (pendingPrivateSelectionId &&
@@ -454,6 +459,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     phaseDurationSeconds > 0
       ? Math.max(0, Math.min(100, ((phaseDurationSeconds - secondsRemaining) / phaseDurationSeconds) * 100))
       : 0;
+  const revealHoldComplete = state?.room.phase === "reveal" ? secondsRemaining <= 0 : false;
   const showFirstRoundTutorial =
     state?.room.round === 1 && (state.room.phase === "private_input" || state.room.phase === "voting");
   const firstRoundTutorial =
@@ -549,7 +555,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     options?: {
       optimisticPrivateSelectionId?: string;
       optimisticChoiceId?: string;
-      optimisticAction?: "start" | "rematch";
+      optimisticAction?: "start" | "rematch" | "advance";
     }
   ) {
     if (!session) {
@@ -1159,7 +1165,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   <div className="stage-pills">
                     <span className="timer-chip meta-with-icon">
                       <ClockIcon className="meta-icon" />
-                      <span>{secondsRemaining}s until next round</span>
+                      <span>{revealHoldComplete ? "Host controls next round" : `${secondsRemaining}s hold reveal`}</span>
                     </span>
                     <span className="timer-chip meta-with-icon">
                       <UsersIcon className="meta-icon" />
@@ -1175,7 +1181,16 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                   className={`payoff-card reveal-payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""}`}
                 >
                   <p className="payoff-kicker">Reveal</p>
-                  <h2 className="payoff-headline">{revealOutcomeValue}</h2>
+                  <h2 className="payoff-headline" data-testid="reveal-headline">
+                    {revealMoment?.headline ?? revealOutcomeValue}
+                  </h2>
+                  <p className="reveal-decision-line" data-testid="reveal-decision-line">
+                    {revealMoment?.decisionLine ?? `Decision landed on: ${revealOutcomeValue}`}
+                  </p>
+                  <div className="reveal-prompt-card" data-testid="reveal-micro-prompt">
+                    <span className="reveal-prompt-label">Micro-response</span>
+                    <strong>{revealMoment?.promptLine ?? "Give the room your one-line defense."}</strong>
+                  </div>
                   <div className="reveal-summary-grid" aria-label="Reveal summary" data-testid="reveal-summary">
                     <div className="reveal-summary-item">
                       <span className="reveal-summary-label">{revealPickedLabel}</span>
@@ -1189,6 +1204,27 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                       <span className="reveal-summary-label">What happened</span>
                       <strong className="reveal-summary-value">{revealOutcomeDetail}</strong>
                     </div>
+                  </div>
+                  <div className="reveal-action-row">
+                    {me?.is_host ? (
+                      <button
+                        className="button-secondary"
+                        data-testid="advance-reveal-button"
+                        disabled={!revealHoldComplete || pendingAction === "advance"}
+                        onClick={() => postToRoom("/advance", {}, { optimisticAction: "advance" })}
+                        type="button"
+                      >
+                        {pendingAction === "advance"
+                          ? "Moving on..."
+                          : !revealHoldComplete
+                            ? "Hold reveal..."
+                            : revealMoment?.hostAdvanceLabel ?? "Next round"}
+                      </button>
+                    ) : (
+                      <p className="helper-text reveal-waiting-line">
+                        {revealMoment?.waitingLine ?? "Waiting for the host to move on."}
+                      </p>
+                    )}
                   </div>
                   {hasRevealDetails ? (
                     <button
@@ -1489,7 +1525,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
             <div className="room-side-meta">
               <span>{playerCount} players live</span>
               <span>Vote timer {VOTE_DURATION_SECONDS}s</span>
-              <span>Reveal timer {REVEAL_DURATION_SECONDS}s</span>
+              <span>Reveal hold {REVEAL_DURATION_SECONDS}s</span>
             </div>
 
             <button

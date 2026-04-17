@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { advanceReveal, createRoom, getRoomState, joinRoomFromInvite, joinRoomFromLanding, playRound, startRound, waitForCurrentNode, waitForPhase } from "./support/room";
+import { advanceReveal, createRoom, getRoomState, joinRoomFromInvite, joinRoomFromLanding, playRound, readStoredRoomSession, startRound, waitForCurrentNode, waitForPhase } from "./support/room";
 import { expireCurrentPhase, getRoomSnapshot } from "./support/admin";
 
 test("majority resolution keeps the majority-picked choice", async ({ host, playerA, playerB }) => {
@@ -116,7 +116,7 @@ test("betrayal ties let the power holder break the outcome", async ({ host, play
   expect(revealState.lastEvent?.power_holder_player_id).toBe(playerBravo?.id ?? null);
 });
 
-test("reveal auto-advances the live page into the next scenario after the receipt timeout", async ({ host, playerA, playerB }) => {
+test("reveal waits for the host to advance even after the hold timer expires", async ({ host, playerA, playerB }) => {
   const players = [host, playerA, playerB];
   const roomCode = await createRoom(host, "Chaotic Friends");
 
@@ -131,18 +131,53 @@ test("reveal auto-advances the live page into the next scenario after the receip
   });
 
   await expect(host.page.getByTestId("reveal-summary")).toBeVisible();
+  await expect(host.page.getByTestId("reveal-headline")).toContainText(`The room picked ${playerA.name}.`);
+  await expect(host.page.getByTestId("reveal-micro-prompt")).toBeVisible();
+  await expect(host.page.getByTestId("advance-reveal-button")).toBeDisabled();
+  await expect(playerA.page.getByText("Waiting for the host to move on")).toBeVisible();
 
   await expireCurrentPhase(roomCode);
 
   await expect
     .poll(async () => (await getRoomState(host.page, roomCode)).room.phase, {
-      message: `Expected room ${roomCode} to leave reveal automatically`
+      message: `Expected room ${roomCode} to remain in reveal until the host advances`
     })
-    .toBe("private_input");
+    .toBe("reveal");
+
+  await expect(host.page.getByTestId("advance-reveal-button")).toBeEnabled();
+
+  await host.page.getByTestId("advance-reveal-button").click();
 
   await expect(host.page.getByTestId("reveal-summary")).toBeHidden();
   await expect(host.page.getByTestId("private-choice-list")).toBeVisible();
 
   const nextState = await getRoomState(host.page, roomCode);
   expect(nextState.currentNode?.id).not.toBe(firstNodeId);
+});
+
+test("non-host advance attempts are rejected", async ({ host, playerA, playerB }) => {
+  const players = [host, playerA, playerB];
+  const roomCode = await createRoom(host, "Chaotic Friends");
+
+  await joinRoomFromLanding(playerA, roomCode);
+  await joinRoomFromInvite(playerB, roomCode);
+  await startRound(host, roomCode);
+
+  await playRound(roomCode, players, {
+    privateSelections: [playerA.name, playerA.name, playerA.name],
+    publicVoteIndices: [0, 0, 1]
+  });
+
+  await expireCurrentPhase(roomCode);
+  const playerSession = await readStoredRoomSession(playerA.page, roomCode);
+  const response = await playerA.page.request.post(`/api/rooms/${roomCode}/advance`, {
+    data: {
+      sessionId: playerSession.sessionId
+    }
+  });
+
+  expect(response.ok()).toBeFalsy();
+  await expect
+    .poll(async () => (await getRoomState(host.page, roomCode)).room.phase)
+    .toBe("reveal");
 });

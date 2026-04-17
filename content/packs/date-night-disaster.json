@@ -23,7 +23,7 @@
       },
       "choices": [
         { "id": "date_1_a", "label": "Make {{spotlight}} propose as a bit", "nextNodeId": "date_2", "resultText": "{{spotlight}} commits to the biggest possible joke and instantly makes it everyone's problem.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] },
-        { "id": "date_1_b", "label": "Make {{spotlight}} blame the moon", "nextNodeId": "date_3", "resultText": "{{spotlight}} hands full responsibility to the night sky and hopes charisma does the rest.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }] },
+        { "id": "date_1_b", "label": "Make {{spotlight}} blame the moon", "nextNodeId": "date_3", "resultText": "{{spotlight}} hands full responsibility to the night sky and hopes charisma does the rest.", "effects": [{ "type": "add_modifier", "modifierId": "romantic_momentum" }], "revealPrompt": "{{spotlight}}, give us your one-line excuse." },
         { "id": "date_1_c", "label": "Make {{spotlight}} steal dessert first", "nextNodeId": "date_4", "resultText": "{{spotlight}} turns romance into lava cake theft and a wildly confident spoon plan.", "effects": [{ "type": "add_modifier", "modifierId": "dessert_chaos" }] }
       ]
     },
@@ -33,7 +33,7 @@
       "prompt": "The next table starts cheering while {{spotlight}} is still visibly in the bit, and someone offers to livestream the moment.",
       "resultText": "The room weaponizes secondhand intimacy and leaves {{spotlight}} on camera.",
       "choices": [
-        { "id": "date_2_a", "label": "Make {{spotlight}} commit to the speech", "nextNodeId": "date_5", "resultText": "{{spotlight}} makes the fake proposal so detailed that nobody can tell when the bit ended.", "effects": [{ "type": "add_modifier", "modifierId": "witnesses" }] },
+        { "id": "date_2_a", "label": "Make {{spotlight}} commit to the speech", "nextNodeId": "date_5", "resultText": "{{spotlight}} makes the fake proposal so detailed that nobody can tell when the bit ended.", "effects": [{ "type": "add_modifier", "modifierId": "witnesses" }], "revealPrompt": "{{spotlight}}, commit to the bit in one sentence." },
         { "id": "date_2_b", "label": "Make {{spotlight}} crowdfund the ring", "nextNodeId": "date_6", "resultText": "{{spotlight}} turns romance into a live fundraiser and kills the mood on contact.", "effects": [{ "type": "add_modifier", "modifierId": "fraud_energy" }] }
       ]
     },

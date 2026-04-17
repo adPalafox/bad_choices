@@ -641,6 +641,35 @@ button {
   max-width: 18ch;
 }
 
+.reveal-decision-line {
+  margin: -6px 0 0;
+  font-size: clamp(1rem, 2.2vw, 1.18rem);
+  line-height: 1.45;
+  color: rgba(247, 243, 233, 0.9);
+}
+
+.reveal-prompt-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(129, 244, 215, 0.08);
+  border: 1px solid rgba(129, 244, 215, 0.18);
+}
+
+.reveal-prompt-label {
+  color: var(--mint-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.76rem;
+}
+
+.reveal-prompt-card strong {
+  font-size: clamp(1.05rem, 2.2vw, 1.24rem);
+  line-height: 1.4;
+  color: rgba(247, 243, 233, 0.98);
+}
+
 .reveal-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -706,6 +735,17 @@ button {
   padding: 10px 14px;
   border-radius: 14px;
   font-size: 0.9rem;
+}
+
+.reveal-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.reveal-waiting-line {
+  margin: 0;
 }
 
 .ending-actions {

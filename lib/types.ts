@@ -31,6 +31,7 @@ export type Choice = {
   label: string;
   nextNodeId: string;
   resultText?: string;
+  revealPrompt?: string;
   gate?: ModifierGate;
   effects?: ChoiceEffect[];
   wildcardNodeIds?: string[];
@@ -68,6 +69,7 @@ export type ScenarioNode = {
   id: string;
   prompt: string;
   resultText?: string;
+  revealPrompt?: string;
   ending?: boolean;
   kind?: ScenarioNodeKind;
   gate?: ModifierGate;
@@ -200,6 +202,14 @@ export type ResolvedPublicRoundContext = {
   betrayalActive: boolean;
 };
 
+export type RevealMoment = {
+  headline: string;
+  decisionLine: string;
+  promptLine: string;
+  waitingLine: string;
+  hostAdvanceLabel: string;
+};
+
 export type ApiRoomState = {
   room: RoomRecord;
   pack: ScenarioPack;
@@ -212,6 +222,7 @@ export type ApiRoomState = {
   lastEvent: GameEventRecord | null;
   pendingRoundContext: PendingPrivateRoundContext | null;
   resolvedRoundContext: ResolvedPublicRoundContext | null;
+  revealMoment: RevealMoment | null;
 };
 
 export type RoomSession = {
