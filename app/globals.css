@@ -487,7 +487,10 @@ button {
   width: 0;
   border-radius: inherit;
   background: linear-gradient(90deg, rgba(255, 203, 105, 0.45), rgba(255, 122, 89, 0.92));
-  transition: width 900ms linear, background 180ms ease;
+  transition:
+    width 1000ms linear,
+    background 220ms ease,
+    opacity 220ms ease;
 }
 
 .phase-progress.is-urgent .phase-progress-fill {
@@ -496,6 +499,14 @@ button {
 
 .phase-progress.is-reveal .phase-progress-fill {
   background: linear-gradient(90deg, rgba(129, 244, 215, 0.5), rgba(159, 232, 255, 0.96));
+}
+
+.phase-progress.urgency-alert {
+  border-color: rgba(255, 122, 89, 0.16);
+}
+
+.phase-progress.urgency-critical {
+  border-color: rgba(255, 93, 115, 0.2);
 }
 
 .choice-list {
@@ -635,10 +646,77 @@ button {
 .reveal-payoff-card {
   display: grid;
   gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.reveal-payoff-card.has-literal-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: -18% 18% 24% 18%;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(255, 251, 220, 0.2), rgba(255, 251, 220, 0) 42%),
+    linear-gradient(180deg, rgba(255, 245, 196, 0.16), rgba(255, 245, 196, 0.02) 42%, rgba(255, 245, 196, 0) 78%);
+  clip-path: polygon(44% 0%, 56% 0%, 78% 100%, 22% 100%);
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.reveal-payoff-card.has-literal-spotlight.is-entering::before {
+  animation: reveal-spotlight-beam 520ms ease-out 110ms 1 both;
 }
 
 .reveal-payoff-card .payoff-headline {
   max-width: 18ch;
+}
+
+.reveal-payoff-card.emphasis-picked .reveal-stage-headline,
+.reveal-payoff-card.emphasis-outcome .reveal-stage-headline {
+  text-shadow: 0 10px 24px rgba(255, 203, 105, 0.12);
+}
+
+.reveal-payoff-card.payoff-card-chaos .reveal-stage-headline {
+  text-shadow: 0 12px 28px rgba(255, 93, 115, 0.18);
+}
+
+.reveal-payoff-card.is-entering {
+  animation: reveal-panel-in 360ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.reveal-payoff-card .reveal-stage {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.reveal-payoff-card.is-entering .reveal-stage {
+  opacity: 0;
+  transform: translateY(14px) scale(0.985);
+  animation: reveal-stage-in 280ms ease both;
+}
+
+.reveal-stage-kicker {
+  animation-delay: 40ms;
+}
+
+.reveal-stage-headline {
+  animation-delay: 90ms;
+}
+
+.reveal-stage-decision {
+  animation-delay: 140ms;
+}
+
+.reveal-stage-prompt {
+  animation-delay: 210ms;
+}
+
+.reveal-stage-summary {
+  animation-delay: 270ms;
+}
+
+.reveal-stage-actions {
+  animation-delay: 320ms;
 }
 
 .reveal-decision-line {
@@ -683,6 +761,13 @@ button {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
 }
 
 .reveal-summary-item-outcome {
@@ -701,6 +786,66 @@ button {
   line-height: 1.3;
   color: rgba(247, 243, 233, 0.98);
   overflow-wrap: anywhere;
+}
+
+.reveal-summary-item.is-emphasized {
+  border-color: rgba(129, 244, 215, 0.34);
+  background: rgba(129, 244, 215, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(129, 244, 215, 0.16),
+    0 16px 34px rgba(129, 244, 215, 0.08);
+  animation: reveal-emphasis-pop 420ms ease-out 1;
+}
+
+.payoff-card-chaos .reveal-summary-item.is-emphasized {
+  border-color: rgba(255, 149, 130, 0.34);
+  background: rgba(255, 93, 115, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(255, 149, 130, 0.16),
+    0 18px 36px rgba(255, 93, 115, 0.12);
+}
+
+.reveal-summary-item.is-spotlight-target::before {
+  content: "";
+  position: absolute;
+  inset: -26% 14% 28% 14%;
+  background: linear-gradient(180deg, rgba(255, 250, 208, 0.22), rgba(255, 250, 208, 0.05) 48%, rgba(255, 250, 208, 0) 100%);
+  clip-path: polygon(44% 0%, 56% 0%, 74% 100%, 26% 100%);
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.reveal-payoff-card.has-literal-spotlight.is-entering .reveal-summary-item.is-spotlight-target::before {
+  animation: reveal-spotlight-beam 460ms ease-out 170ms 1 both;
+}
+
+.reveal-spotlight-name {
+  position: relative;
+  z-index: 1;
+}
+
+.reveal-payoff-card.has-literal-spotlight .reveal-spotlight-name {
+  text-shadow:
+    0 0 10px rgba(255, 249, 196, 0.28),
+    0 0 20px rgba(255, 203, 105, 0.16);
+}
+
+.reveal-payoff-card.has-literal-spotlight.is-entering .reveal-spotlight-name {
+  animation: reveal-spotlight-name 420ms ease-out 190ms 1 both;
+}
+
+.payoff-card-chaos.has-literal-spotlight::before,
+.payoff-card-chaos .reveal-summary-item.is-spotlight-target::before {
+  background:
+    radial-gradient(circle at 50% 22%, rgba(255, 214, 206, 0.22), rgba(255, 214, 206, 0) 42%),
+    linear-gradient(180deg, rgba(255, 149, 130, 0.18), rgba(255, 149, 130, 0.04) 42%, rgba(255, 149, 130, 0) 78%);
+}
+
+.payoff-card-chaos.has-literal-spotlight .reveal-spotlight-name {
+  text-shadow:
+    0 0 10px rgba(255, 214, 206, 0.28),
+    0 0 20px rgba(255, 93, 115, 0.18);
 }
 
 .reveal-secondary-details {
@@ -769,6 +914,35 @@ button {
   margin-top: 22px;
 }
 
+.share-damage {
+  position: relative;
+}
+
+.share-damage .share-stage,
+.share-damage .artifact-stage {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.share-damage.is-entering .share-stage,
+.share-damage.is-entering .artifact-stage {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  animation: artifact-stage-in 320ms ease both;
+}
+
+.share-damage.is-entering .share-stage-header {
+  animation-delay: 30ms;
+}
+
+.share-damage.is-entering .artifact-stage-card {
+  animation-delay: 140ms;
+}
+
+.share-damage.is-entering .artifact-stage-actions {
+  animation-delay: 280ms;
+}
+
 .share-damage-header {
   display: flex;
   justify-content: space-between;
@@ -808,6 +982,44 @@ button {
   display: grid;
   gap: 18px;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.artifact-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto -35%;
+  width: 46%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.82), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.share-damage.is-entering .artifact-card::before {
+  animation: artifact-shimmer 720ms ease-out 220ms 1 both;
+}
+
+.artifact-card-celebratory {
+  border-color: rgba(129, 244, 215, 0.3);
+  box-shadow:
+    var(--shadow),
+    0 18px 44px rgba(129, 244, 215, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.artifact-card-chaotic {
+  border-color: rgba(255, 149, 130, 0.34);
+  background:
+    radial-gradient(circle at top right, rgba(255, 93, 115, 0.22), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(255, 203, 105, 0.18), transparent 34%),
+    linear-gradient(155deg, rgba(28, 19, 44, 0.96), rgba(15, 11, 28, 0.98));
+  box-shadow:
+    var(--shadow),
+    0 18px 44px rgba(255, 93, 115, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .artifact-actions {
@@ -966,6 +1178,41 @@ button {
   align-items: center;
 }
 
+.vote-row {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.vote-row > * {
+  position: relative;
+  z-index: 1;
+}
+
+.vote-row-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--vote-fill, 0%);
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(129, 244, 215, 0.14), rgba(159, 232, 255, 0.08));
+  opacity: 0.95;
+  z-index: 0;
+}
+
+.vote-row.is-reveal.is-animating .vote-row-fill {
+  width: 0;
+  animation: vote-fill-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.vote-row.is-reveal.is-pending .vote-row-fill {
+  width: 0;
+}
+
+.vote-row.is-reveal.is-static .vote-row-fill {
+  width: var(--vote-fill, 0%);
+}
+
 .recap-card {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
@@ -1006,6 +1253,10 @@ button {
 .vote-row.winner {
   border-color: rgba(255, 203, 105, 0.36);
   background: rgba(255, 203, 105, 0.08);
+}
+
+.vote-row.winner .vote-row-fill {
+  background: linear-gradient(90deg, rgba(255, 203, 105, 0.22), rgba(255, 122, 89, 0.14));
 }
 
 .timeline-item h3 {
@@ -1261,6 +1512,195 @@ button {
 
 .timer-chip {
   font-weight: 600;
+}
+
+.timer-chip.urgency-warn {
+  border-color: rgba(255, 203, 105, 0.26);
+  background: rgba(255, 203, 105, 0.1);
+  color: rgba(255, 244, 214, 0.94);
+}
+
+.timer-chip.urgency-alert {
+  border-color: rgba(255, 122, 89, 0.34);
+  background: rgba(255, 122, 89, 0.12);
+  color: #fff0ea;
+  animation: timer-chip-pulse 760ms ease-in-out 2;
+}
+
+.timer-chip.urgency-critical {
+  border-color: rgba(255, 93, 115, 0.44);
+  background: rgba(255, 93, 115, 0.14);
+  color: #fff1f4;
+  animation: timer-chip-pulse 520ms ease-in-out 2;
+}
+
+.timer-chip-reveal.urgency-alert,
+.timer-chip-reveal.urgency-critical {
+  animation-duration: 920ms;
+}
+
+@keyframes reveal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reveal-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reveal-emphasis-pop {
+  0% {
+    transform: scale(0.985);
+    box-shadow:
+      0 0 0 0 rgba(129, 244, 215, 0.2),
+      0 0 0 0 rgba(129, 244, 215, 0.1);
+  }
+
+  60% {
+    transform: scale(1.01);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes reveal-spotlight-beam {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scaleY(0.92);
+  }
+
+  25% {
+    opacity: 0.95;
+  }
+
+  100% {
+    opacity: 0.38;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes reveal-spotlight-name {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.985);
+    filter: brightness(1);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scale(1.025);
+    filter: brightness(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes vote-fill-in {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: var(--vote-fill, 0%);
+  }
+}
+
+@keyframes timer-chip-pulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+  }
+
+  50% {
+    transform: translateY(-1px) scale(1.015);
+    box-shadow: 0 12px 28px rgba(255, 122, 89, 0.14);
+  }
+}
+
+@keyframes progress-track-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 89, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 1px rgba(255, 122, 89, 0.12), 0 0 26px rgba(255, 122, 89, 0.12);
+  }
+}
+
+@keyframes artifact-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes artifact-shimmer {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  15% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(320%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-progress,
+  .phase-progress-fill,
+  .timer-chip,
+  .reveal-payoff-card,
+  .reveal-stage,
+  .reveal-summary-item,
+  .reveal-payoff-card::before,
+  .reveal-summary-item::before,
+  .reveal-spotlight-name,
+  .vote-row-fill,
+  .share-damage .share-stage,
+  .share-damage .artifact-stage,
+  .artifact-card::before {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    transform: none !important;
+  }
+
+  .vote-row.is-reveal .vote-row-fill {
+    width: var(--vote-fill, 0%);
+  }
 }
 
 @media (max-width: 960px) {

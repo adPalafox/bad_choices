@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -42,10 +42,39 @@ type JoinState = {
   error: string | null;
 };
 
+type UrgencyLevel = "none" | "warn" | "alert" | "critical";
+
+function getUrgencyLevel(
+  phase: ApiRoomState["room"]["phase"] | undefined,
+  secondsRemaining: number
+): UrgencyLevel {
+  if (
+    !phase ||
+    (phase !== "private_input" && phase !== "voting" && phase !== "reveal") ||
+    secondsRemaining > 5
+  ) {
+    return "none";
+  }
+
+  if (secondsRemaining <= 1) {
+    return "critical";
+  }
+
+  if (secondsRemaining <= 3) {
+    return "alert";
+  }
+
+  return "warn";
+}
+
 export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const router = useRouter();
   const artifactCardRef = useRef<HTMLElement | null>(null);
   const resolvingExpiredPhaseRef = useRef(false);
+  const revealAnimationTimeoutRef = useRef<number | null>(null);
+  const artifactAnimationTimeoutRef = useRef<number | null>(null);
+  const lastAnimatedRevealEventIdRef = useRef<string | null>(null);
+  const lastAnimatedEndedEventIdRef = useRef<string | null>(null);
   const [state, setState] = useState<ApiRoomState | null>(null);
   const [session, setSession] = useState<RoomSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +90,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const [nextPackId, setNextPackId] = useState("");
   const [sharingArtifact, setSharingArtifact] = useState(false);
   const [showRevealDetails, setShowRevealDetails] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isRevealEntering, setIsRevealEntering] = useState(false);
+  const [revealVoteBarsReady, setRevealVoteBarsReady] = useState(false);
+  const [isArtifactEntering, setIsArtifactEntering] = useState(false);
   const [joinState, setJoinState] = useState<JoinState>({
     nickname: "",
     busy: false,
@@ -137,6 +170,24 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     setPresenceReady(false);
     refreshState();
   }, [code, refreshState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    syncPreference();
+    mediaQuery.addEventListener("change", syncPreference);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncPreference);
+    };
+  }, []);
 
   useEffect(() => {
     const savedNickname = readSavedNickname();
@@ -299,6 +350,84 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   }, [state?.pack.packId]);
 
   useEffect(() => {
+    return () => {
+      if (revealAnimationTimeoutRef.current) {
+        window.clearTimeout(revealAnimationTimeoutRef.current);
+      }
+
+      if (artifactAnimationTimeoutRef.current) {
+        window.clearTimeout(artifactAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const revealEventId = state?.room.phase === "reveal" ? state?.lastEvent?.id ?? null : null;
+
+    if (!revealEventId) {
+      setIsRevealEntering(false);
+      setRevealVoteBarsReady(false);
+      return;
+    }
+
+    if (lastAnimatedRevealEventIdRef.current === revealEventId) {
+      return;
+    }
+
+    lastAnimatedRevealEventIdRef.current = revealEventId;
+
+    if (revealAnimationTimeoutRef.current) {
+      window.clearTimeout(revealAnimationTimeoutRef.current);
+    }
+
+    if (prefersReducedMotion) {
+      setIsRevealEntering(false);
+      setRevealVoteBarsReady(true);
+      return;
+    }
+
+    setIsRevealEntering(true);
+    setRevealVoteBarsReady(false);
+
+    revealAnimationTimeoutRef.current = window.setTimeout(() => {
+      setRevealVoteBarsReady(true);
+      setIsRevealEntering(false);
+      revealAnimationTimeoutRef.current = null;
+    }, 420);
+  }, [prefersReducedMotion, state?.lastEvent?.id, state?.room.phase]);
+
+  useEffect(() => {
+    const endedEventId = state?.room.phase === "ended" ? state?.events.at(-1)?.id ?? "ended" : null;
+
+    if (!endedEventId) {
+      setIsArtifactEntering(false);
+      return;
+    }
+
+    if (lastAnimatedEndedEventIdRef.current === endedEventId) {
+      return;
+    }
+
+    lastAnimatedEndedEventIdRef.current = endedEventId;
+
+    if (artifactAnimationTimeoutRef.current) {
+      window.clearTimeout(artifactAnimationTimeoutRef.current);
+    }
+
+    if (prefersReducedMotion) {
+      setIsArtifactEntering(false);
+      return;
+    }
+
+    setIsArtifactEntering(true);
+
+    artifactAnimationTimeoutRef.current = window.setTimeout(() => {
+      setIsArtifactEntering(false);
+      artifactAnimationTimeoutRef.current = null;
+    }, 720);
+  }, [prefersReducedMotion, state?.events, state?.room.phase]);
+
+  useEffect(() => {
     const activeNode = state?.currentNode;
 
     if (!activeNode) {
@@ -443,6 +572,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       { label: "Reddit", href: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedMessage}` }
     ];
   }, [displayArtifact, siteUrl]);
+  const artifactMood =
+    displayArtifact && state?.room.phase === "ended"
+      ? displayArtifact.chaosMoments >= 2 || state.events.at(-1)?.resolution_type !== "majority"
+        ? "chaotic"
+        : "celebratory"
+      : "celebratory";
 
   const secondsRemaining = state?.room.phase_deadline
     ? Math.max(0, Math.ceil((new Date(state.room.phase_deadline).getTime() - now) / 1000))
@@ -460,6 +595,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       ? Math.max(0, Math.min(100, ((phaseDurationSeconds - secondsRemaining) / phaseDurationSeconds) * 100))
       : 0;
   const revealHoldComplete = state?.room.phase === "reveal" ? secondsRemaining <= 0 : false;
+  const urgencyLevel = getUrgencyLevel(state?.room.phase, secondsRemaining);
   const showFirstRoundTutorial =
     state?.room.round === 1 && (state.room.phase === "private_input" || state.room.phase === "voting");
   const firstRoundTutorial =
@@ -727,16 +863,41 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     }
   }
 
-  function renderVoteRows(choices: Choice[], counts: Record<string, number>, reveal = false) {
+  function renderVoteRows(
+    choices: Choice[],
+    counts: Record<string, number>,
+    options?: {
+      reveal?: boolean;
+      animate?: boolean;
+      pending?: boolean;
+    }
+  ) {
+    const reveal = options?.reveal ?? false;
+    const animate = options?.animate ?? false;
+    const pending = options?.pending ?? false;
+    const totalCount = Math.max(1, Object.values(counts).reduce((sum, count) => sum + count, 0));
+
     return choices.map((choice) => {
       const count = counts[choice.id] ?? 0;
       const selected = Boolean(
         me && state?.votes.some((vote) => vote.player_id === me.id && vote.selected_choice_id === choice.id)
       );
       const winner = reveal && state?.lastEvent?.selected_choice_id === choice.id;
+      const percent = Math.max(0, Math.min(100, (count / totalCount) * 100));
 
       return (
-        <div className={`vote-row ${winner ? "winner" : ""}`} key={choice.id}>
+        <div
+          className={`vote-row ${winner ? "winner" : ""} ${reveal ? "is-reveal" : ""} ${animate ? "is-animating" : "is-static"} ${pending ? "is-pending" : ""}`}
+          key={choice.id}
+          style={
+            reveal
+              ? ({
+                  "--vote-fill": `${percent}%`
+                } as CSSProperties)
+              : undefined
+          }
+        >
+          {reveal ? <span aria-hidden="true" className="vote-row-fill" /> : null}
           <span>{renderSpotlightText(choice.label)}</span>
           <strong>{count}</strong>
           {selected && !reveal ? <em>Your vote</em> : null}
@@ -818,6 +979,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const revealOutcomeDetail = state?.lastEvent
     ? renderSpotlightText(state.lastEvent.consequence_line)
     : "";
+  const emphasizeRevealPicked = Boolean(state?.lastEvent?.spotlight_label);
   const hasRevealDetails = Boolean(
     state?.lastEvent?.leading_private_option_label ||
       state?.lastEvent?.distribution_line ||
@@ -1002,7 +1164,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     {privateSupportLine ? <p className="phase-support-line">{privateSupportLine}</p> : null}
                   </div>
                   <div className="stage-pills">
-                    <span className="timer-chip meta-with-icon">
+                    <span className={`timer-chip meta-with-icon urgency-${urgencyLevel}`}>
                       <ClockIcon className="meta-icon" />
                       <span>{secondsRemaining}s left</span>
                     </span>
@@ -1014,7 +1176,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 </div>
                 <div
                   aria-hidden="true"
-                  className={`phase-progress ${secondsRemaining <= 5 ? "is-urgent" : ""}`}
+                  className={`phase-progress ${urgencyLevel !== "none" ? "is-urgent" : ""} urgency-${urgencyLevel}`}
                 >
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
@@ -1096,7 +1258,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     <h2>{renderSpotlightText(state.currentNode.prompt)}</h2>
                   </div>
                   <div className="stage-pills">
-                    <span className="timer-chip meta-with-icon">
+                    <span className={`timer-chip meta-with-icon urgency-${urgencyLevel}`}>
                       <ClockIcon className="meta-icon" />
                       <span>{secondsRemaining}s left</span>
                     </span>
@@ -1108,7 +1270,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                 </div>
                 <div
                   aria-hidden="true"
-                  className={`phase-progress ${secondsRemaining <= 5 ? "is-urgent" : ""}`}
+                  className={`phase-progress ${urgencyLevel !== "none" ? "is-urgent" : ""} urgency-${urgencyLevel}`}
                 >
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
@@ -1163,7 +1325,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     </div>
                   </div>
                   <div className="stage-pills">
-                    <span className="timer-chip meta-with-icon">
+                    <span className={`timer-chip meta-with-icon timer-chip-reveal urgency-${urgencyLevel}`}>
                       <ClockIcon className="meta-icon" />
                       <span>{revealHoldComplete ? "Host controls next round" : `${secondsRemaining}s hold reveal`}</span>
                     </span>
@@ -1173,39 +1335,48 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     </span>
                   </div>
                 </div>
-                <div aria-hidden="true" className="phase-progress is-reveal">
+                <div aria-hidden="true" className={`phase-progress is-reveal urgency-${urgencyLevel}`}>
                   <div className="phase-progress-fill" style={{ width: `${phaseProgressPercent}%` }} />
                 </div>
                 <section
                   data-testid="reveal-panel"
-                  className={`payoff-card reveal-payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""}`}
+                  className={`payoff-card reveal-payoff-card ${state.lastEvent.resolution_type !== "majority" ? "payoff-card-chaos" : ""} ${isRevealEntering ? "is-entering" : "is-settled"} ${prefersReducedMotion ? "reduced-motion" : ""} ${emphasizeRevealPicked ? "emphasis-picked" : "emphasis-outcome"} ${state.lastEvent.spotlight_label ? "has-literal-spotlight" : ""}`}
                 >
-                  <p className="payoff-kicker">Reveal</p>
-                  <h2 className="payoff-headline" data-testid="reveal-headline">
+                  <p className="payoff-kicker reveal-stage reveal-stage-kicker">Reveal</p>
+                  <h2 className="payoff-headline reveal-stage reveal-stage-headline" data-testid="reveal-headline">
                     {revealMoment?.headline ?? revealOutcomeValue}
                   </h2>
-                  <p className="reveal-decision-line" data-testid="reveal-decision-line">
+                  <p
+                    className="reveal-decision-line reveal-stage reveal-stage-decision"
+                    data-testid="reveal-decision-line"
+                  >
                     {revealMoment?.decisionLine ?? `Decision landed on: ${revealOutcomeValue}`}
                   </p>
-                  <div className="reveal-prompt-card" data-testid="reveal-micro-prompt">
+                  <div className="reveal-prompt-card reveal-stage reveal-stage-prompt" data-testid="reveal-micro-prompt">
                     <span className="reveal-prompt-label">Micro-response</span>
                     <strong>{revealMoment?.promptLine ?? "Give the room your one-line defense."}</strong>
                   </div>
-                  <div className="reveal-summary-grid" aria-label="Reveal summary" data-testid="reveal-summary">
-                    <div className="reveal-summary-item">
+                  <div
+                    className="reveal-summary-grid reveal-stage reveal-stage-summary"
+                    aria-label="Reveal summary"
+                    data-testid="reveal-summary"
+                  >
+                    <div className={`reveal-summary-item ${emphasizeRevealPicked ? "is-emphasized is-spotlight-target" : ""}`}>
                       <span className="reveal-summary-label">{revealPickedLabel}</span>
-                      <strong className="reveal-summary-value">{revealPickedValue}</strong>
+                      <strong className={`reveal-summary-value ${emphasizeRevealPicked ? "reveal-spotlight-name" : ""}`}>
+                        {revealPickedValue}
+                      </strong>
                     </div>
                     <div className="reveal-summary-item">
                       <span className="reveal-summary-label">Caused by</span>
                       <strong className="reveal-summary-value">{revealCauseValue}</strong>
                     </div>
-                    <div className="reveal-summary-item reveal-summary-item-outcome">
+                    <div className={`reveal-summary-item reveal-summary-item-outcome ${!emphasizeRevealPicked ? "is-emphasized" : ""}`}>
                       <span className="reveal-summary-label">What happened</span>
                       <strong className="reveal-summary-value">{revealOutcomeDetail}</strong>
                     </div>
                   </div>
-                  <div className="reveal-action-row">
+                  <div className="reveal-action-row reveal-stage reveal-stage-actions">
                     {me?.is_host ? (
                       <button
                         className="button-secondary"
@@ -1287,15 +1458,23 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                     </div>
                   ) : null}
                 </section>
-                <div className="vote-bar-group">{renderVoteRows(currentChoices, visibleVoteSnapshot ?? {}, true)}</div>
+                <div className="vote-bar-group">
+                  {renderVoteRows(currentChoices, visibleVoteSnapshot ?? {}, {
+                    reveal: true,
+                    animate: revealVoteBarsReady && !prefersReducedMotion,
+                    pending: !revealVoteBarsReady && !prefersReducedMotion
+                  })}
+                </div>
               </>
             ) : null}
 
             {state.room.phase === "ended" ? (
               <>
                 {displayArtifact ? (
-                  <section className="share-damage">
-                    <div className="share-damage-header">
+                  <section
+                    className={`share-damage ${isArtifactEntering ? "is-entering" : "is-settled"} ${prefersReducedMotion ? "reduced-motion" : ""} mood-${artifactMood}`}
+                  >
+                    <div className="share-damage-header share-stage share-stage-header">
                       <div>
                         <div className="section-tag">Post-game artifact</div>
                         <h2>Share the damage.</h2>
@@ -1305,7 +1484,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
 
                     <div className="share-artifact-grid">
                       <article
-                        className="artifact-card"
+                        className={`artifact-card artifact-stage artifact-stage-card artifact-card-${artifactMood}`}
                         aria-label="Post-game recap card"
                         data-testid="artifact-card"
                         ref={artifactCardRef}
@@ -1354,7 +1533,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                           </div>
                         ) : null}
                       </article>
-                      <div className="artifact-actions">
+                      <div className="artifact-actions artifact-stage artifact-stage-actions">
                         <button
                           className="button-secondary"
                           data-testid="share-artifact-button"
