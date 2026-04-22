@@ -127,3 +127,31 @@ export function DoorIcon({ className }: IconProps) {
     </IconFrame>
   );
 }
+
+export function SoundOnIcon({ className }: IconProps) {
+  return (
+    <IconFrame className={className}>
+      <path d="M5 9v6h4l5 4V5l-5 4Z" />
+      <path d="M18 9.5a4.5 4.5 0 0 1 0 5" />
+      <path d="M20.5 7a8 8 0 0 1 0 10" />
+    </IconFrame>
+  );
+}
+
+export function SoundOffIcon({ className }: IconProps) {
+  return (
+    <IconFrame className={className}>
+      <path d="M5 9v6h4l5 4V5l-5 4Z" />
+      <path d="M18 9l4 6" />
+      <path d="M22 9l-4 6" />
+    </IconFrame>
+  );
+}
+
+export function MinusIcon({ className }: IconProps) {
+  return (
+    <IconFrame className={className}>
+      <path d="M6 12h12" />
+    </IconFrame>
+  );
+}

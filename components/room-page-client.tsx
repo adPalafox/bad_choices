@@ -28,6 +28,7 @@ import {
 } from "@/lib/game";
 import { didPlayerSelectPrivateOption } from "@/lib/regression-helpers";
 import { readRoomSession, readSavedNickname, writeRoomSession, writeSavedNickname } from "@/lib/room-session";
+import { playSound, type SoundCueId } from "@/lib/sound";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import type { ApiRoomState, Choice, RoomSession, ScenarioPack } from "@/lib/types";
 
@@ -73,8 +74,19 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   const resolvingExpiredPhaseRef = useRef(false);
   const revealAnimationTimeoutRef = useRef<number | null>(null);
   const artifactAnimationTimeoutRef = useRef<number | null>(null);
+  const revealSoundTimeoutRef = useRef<number | null>(null);
+  const lastCountdownSoundAtRef = useRef(0);
   const lastAnimatedRevealEventIdRef = useRef<string | null>(null);
   const lastAnimatedEndedEventIdRef = useRef<string | null>(null);
+  const lastSoundedRevealEventIdRef = useRef<string | null>(null);
+  const lastSoundedEndedEventIdRef = useRef<string | null>(null);
+  const countdownMarkersRef = useRef<{
+    key: string | null;
+    playedSeconds: Set<number>;
+  }>({
+    key: null,
+    playedSeconds: new Set()
+  });
   const [state, setState] = useState<ApiRoomState | null>(null);
   const [session, setSession] = useState<RoomSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -358,6 +370,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       if (artifactAnimationTimeoutRef.current) {
         window.clearTimeout(artifactAnimationTimeoutRef.current);
       }
+
+      if (revealSoundTimeoutRef.current) {
+        window.clearTimeout(revealSoundTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -397,6 +413,44 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
   }, [prefersReducedMotion, state?.lastEvent?.id, state?.room.phase]);
 
   useEffect(() => {
+    const revealEventId = state?.room.phase === "reveal" ? state?.lastEvent?.id ?? null : null;
+
+    if (!revealEventId) {
+      if (revealSoundTimeoutRef.current) {
+        window.clearTimeout(revealSoundTimeoutRef.current);
+        revealSoundTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    if (lastSoundedRevealEventIdRef.current === revealEventId) {
+      return;
+    }
+
+    lastSoundedRevealEventIdRef.current = revealEventId;
+
+    if (revealSoundTimeoutRef.current) {
+      window.clearTimeout(revealSoundTimeoutRef.current);
+    }
+
+    const nowTime = Date.now();
+    const timeSinceCountdown = nowTime - lastCountdownSoundAtRef.current;
+    const revealLeadDelay = Math.max(140, 420 - timeSinceCountdown);
+
+    revealSoundTimeoutRef.current = window.setTimeout(() => {
+      playSound("reveal_transition", { volume: 0.42 });
+      const outcomeTimeout = window.setTimeout(() => {
+        playSound(state?.lastEvent?.resolution_type !== "majority" ? "chaos_reveal" : "clean_outcome", {
+          volume: state?.lastEvent?.resolution_type !== "majority" ? 0.2 : 0.46
+        });
+        revealSoundTimeoutRef.current = null;
+      }, 180);
+
+      revealSoundTimeoutRef.current = outcomeTimeout;
+    }, revealLeadDelay);
+  }, [state?.lastEvent?.id, state?.lastEvent?.resolution_type, state?.room.phase]);
+
+  useEffect(() => {
     const endedEventId = state?.room.phase === "ended" ? state?.events.at(-1)?.id ?? "ended" : null;
 
     if (!endedEventId) {
@@ -426,6 +480,21 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       artifactAnimationTimeoutRef.current = null;
     }, 720);
   }, [prefersReducedMotion, state?.events, state?.room.phase]);
+
+  useEffect(() => {
+    const endedEventId = state?.room.phase === "ended" ? state?.events.at(-1)?.id ?? "ended" : null;
+
+    if (!endedEventId) {
+      return;
+    }
+
+    if (lastSoundedEndedEventIdRef.current === endedEventId) {
+      return;
+    }
+
+    lastSoundedEndedEventIdRef.current = endedEventId;
+    playSound("post_game_artifact_handoff", { volume: 0.88 });
+  }, [state?.events, state?.room.phase]);
 
   useEffect(() => {
     const activeNode = state?.currentNode;
@@ -635,6 +704,36 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       : null;
   const voteLockedStatus = hasVoted ? "Public vote locked" : null;
 
+  useEffect(() => {
+    if (!state?.room.phase_deadline || (state.room.phase !== "private_input" && state.room.phase !== "voting")) {
+      countdownMarkersRef.current = {
+        key: null,
+        playedSeconds: new Set()
+      };
+      return;
+    }
+
+    const countdownKey = `${state.room.phase}:${state.room.phase_deadline}`;
+
+    if (countdownMarkersRef.current.key !== countdownKey) {
+      countdownMarkersRef.current = {
+        key: countdownKey,
+        playedSeconds: new Set()
+      };
+    }
+
+    if (secondsRemaining < 1 || secondsRemaining > 5 || countdownMarkersRef.current.playedSeconds.has(secondsRemaining)) {
+      return;
+    }
+
+    countdownMarkersRef.current.playedSeconds.add(secondsRemaining);
+    lastCountdownSoundAtRef.current = Date.now();
+
+    playSound("countdown_tick", {
+      volume: secondsRemaining === 1 ? 0.38 : 0.28
+    });
+  }, [secondsRemaining, state?.room.phase, state?.room.phase_deadline]);
+
   async function handleJoinRoom() {
     setJoinState((current) => ({
       ...current,
@@ -692,6 +791,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       optimisticPrivateSelectionId?: string;
       optimisticChoiceId?: string;
       optimisticAction?: "start" | "rematch" | "advance";
+      interactionCue?: SoundCueId;
     }
   ) {
     if (!session) {
@@ -709,6 +809,17 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
 
     if (options?.optimisticAction) {
       setPendingAction(options.optimisticAction);
+    }
+
+    if (options?.interactionCue) {
+      playSound(options.interactionCue, {
+        volume:
+          options.interactionCue === "advance_round"
+            ? 0.2
+            : options.interactionCue === "private_pick_locked" || options.interactionCue === "public_vote_locked"
+              ? 0.5
+              : 0.5
+      });
     }
 
     const response = await fetch(`/api/rooms/${code}${path}`, {
@@ -749,6 +860,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
     try {
       await navigator.clipboard.writeText(value);
       setCopiedField(field);
+      playSound("copy_share_success", { volume: 0.88 });
     } catch {
       setError(`Failed to copy ${field}.`);
     }
@@ -854,6 +966,7 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
       downloadBlob(blob, file.name);
       await navigator.clipboard.writeText(shareText);
       setCopiedField("link");
+      playSound("copy_share_success", { volume: 0.68 });
     } catch (shareError) {
       if (!(shareError instanceof DOMException && shareError.name === "AbortError")) {
         setError(shareError instanceof Error ? shareError.message : "Failed to share artifact.");
@@ -1198,7 +1311,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                               postToRoom(
                                 "/private",
                                 { optionId: option.id },
-                                { optimisticPrivateSelectionId: option.id }
+                                {
+                                  optimisticPrivateSelectionId: option.id,
+                                  interactionCue: "private_pick_locked"
+                                }
                               )
                             }
                             type="button"
@@ -1225,7 +1341,10 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                               postToRoom(
                                 "/private",
                                 { targetPlayerId: player.id },
-                                { optimisticPrivateSelectionId: player.id }
+                                {
+                                  optimisticPrivateSelectionId: player.id,
+                                  interactionCue: "private_pick_locked"
+                                }
                               )
                             }
                             type="button"
@@ -1294,7 +1413,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         data-testid={`public-choice-${choice.id}`}
                         className={`choice-button ${selected ? "selected" : ""} ${hasVoted && !selected ? "locked" : ""}`}
                         disabled={hasVoted}
-                        onClick={() => postToRoom("/vote", { choiceId: choice.id }, { optimisticChoiceId: choice.id })}
+                        onClick={() =>
+                          postToRoom("/vote", { choiceId: choice.id }, {
+                            optimisticChoiceId: choice.id,
+                            interactionCue: "public_vote_locked"
+                          })
+                        }
                         type="button"
                       >
                         <span className="choice-copy">{renderSpotlightText(choice.label)}</span>
@@ -1382,7 +1506,12 @@ export function RoomPageClient({ code, packs }: RoomPageClientProps) {
                         className="button-secondary"
                         data-testid="advance-reveal-button"
                         disabled={!revealHoldComplete || pendingAction === "advance"}
-                        onClick={() => postToRoom("/advance", {}, { optimisticAction: "advance" })}
+                        onClick={() =>
+                          postToRoom("/advance", {}, {
+                            optimisticAction: "advance",
+                            interactionCue: "advance_round"
+                          })
+                        }
                         type="button"
                       >
                         {pendingAction === "advance"
