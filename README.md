@@ -1,3 +1,6 @@
+<img width="1278" height="452" alt="Screenshot 2026-04-22 at 7 50 47 PM" src="https://github.com/user-attachments/assets/0f0bbb4b-0452-40e1-aaac-96c7b46572f9" />
+
+
 # Bad Choices
 
 Bad Choices is a lightweight social web game for fast group decisions. Players join a room with a code, secretly nominate the player most likely to make each scenario worse, vote on the public dilemma that nomination creates, and end each round with named blame.
