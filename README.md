@@ -21,7 +21,7 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
 
 - `Next.js` app router
 - `Supabase` for room state, votes, and realtime subscriptions
-- Portable deploy shape that works on Netlify or Vercel
+- Portable deploy shape that works on Netlify, Render, or Vercel
 
 ## Local setup
 
@@ -60,6 +60,29 @@ Bad Choices is a lightweight social web game for fast group decisions. Players j
    ```
 
 6. Open [http://localhost:3000](http://localhost:3000)
+
+## Deploying
+
+### Render
+
+This repo includes a root-level [`render.yaml`](/Users/adreanpalafox/Developer/bad_choices/render.yaml) Blueprint for a standalone Render web service. It does not replace the existing Netlify setup; both platforms can point at the same GitHub repo and the same Supabase backend.
+
+Set these environment variables in Render before the first deploy:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+The Render service uses:
+
+- build command: `npm ci && npm run build`
+- start command: `npm run start -- --hostname 0.0.0.0 --port $PORT`
+
+### Netlify
+
+The existing [`netlify.toml`](/Users/adreanpalafox/Developer/bad_choices/netlify.toml) remains valid. Running a Render deploy does not modify or disable Netlify.
 
 ## Automated e2e
 
